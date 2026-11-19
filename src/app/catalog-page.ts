@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop'
 import { DomSanitizer } from '@angular/platform-browser'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
-  CmBadge, CmButton, CmCard, CmColumn, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
+  CmBadge, CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDisclosure, CmDonutChart, CmEmpty, CmField, CmGrid, CmGridContainer,
   CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
   CmThemeMenu, CmThemeService, CmToastService,
 } from '@cosmemilton/ui-angular'
@@ -13,6 +13,7 @@ import { CatalogMapDemo } from './catalog-map-demo'
 import { catalog, categories, categoryRoot, normalizeSearch } from './navigation'
 import rawExamples from './reference/catalogExamples.json'
 import rawTrees from './reference/catalogTrees.json'
+import { chartMarkup, orderAxis, pipelineStages, revenueAxis, weeklyPoints } from './reference/catalogChartData'
 import { FixtureChild, FixtureTree } from './fixture-tree'
 import { APP_PATHS } from './reference/paths'
 
@@ -25,7 +26,7 @@ const trees = rawTrees as unknown as Record<string,(FixtureChild[] | null)[]>
   selector:'aurora-catalog',
   imports: [RouterLink, CmBadge, CmButton, CmCard, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
     CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
-    FixtureTree, CatalogFrame, CatalogMapDemo],
+    FixtureTree, CatalogFrame, CatalogMapDemo, CmBarChart, CmComparisonLineChart, CmDonutChart],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
@@ -73,6 +74,11 @@ export class CatalogPage {
       && normalizeSearch([item.label, item.name, item.slug.replaceAll('-', ' '), item.description, item.category.label].join(' ')).includes(target))
   })
   readonly selected = signal('')
+  readonly pipelineStages = pipelineStages
+  readonly weeklyPoints = weeklyPoints
+  readonly revenueAxis = revenueAxis
+  readonly orderAxis = orderAxis
+  readonly chartMarkup = this.item && chartMarkup[this.item.name]
   readonly columns: CmColumn[] = [
     {id:'contact',label:'Cliente'},{id:'city',label:'Cidade'},{id:'value',label:'Valor',align:'right'},{id:'status',label:'Situação'},
   ]

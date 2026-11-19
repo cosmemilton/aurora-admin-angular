@@ -18,6 +18,24 @@
                 <iframe class="cm-frame cm-frame--framed" height="320" style="--cm-frame-height:320px" [src]="frameSources()?.[frame]"
                   [attr.title]="example.name + ' · ' + (frame === 'basic' ? 'Básico' : 'Em uso')"></iframe>
               } @else { @switch (example.name) {
+                @case ('CmBarChart') {
+                  <cm-bar-chart [data]="pipelineStages" [title]="index ? 'Pipeline comercial' : 'Oportunidades por etapa'"
+                    [height]="index ? 180 : 160" [orientation]="index ? 'horizontal' : 'vertical'"
+                    [barThickness]="index ? 'sm' : undefined" [legend]="!!index" legendLayout="list"
+                    [accessibleTableLabel]="index ? 'Quantidade de oportunidades por etapa' : 'Oportunidades por etapa'" />
+                }
+                @case ('CmComparisonLineChart') {
+                  <cm-comparison-line-chart [data]="weeklyPoints" [title]="index ? 'Receita e volume de pedidos' : 'Receita e pedidos'"
+                    [height]="index ? 200 : 160" [curve]="index ? 'smooth' : 'linear'"
+                    [xLabels]="index ? 'responsive' : 'compact'" [legendPosition]="index ? 'header' : 'footer'"
+                    [leftAxis]="index ? revenueAxis : { label: 'Receita (R$)' }" [rightAxis]="index ? orderAxis : { label: 'Pedidos' }"
+                    [accessibleTableLabel]="index ? 'Receita em reais e número de pedidos por semana' : 'Receita e pedidos'" />
+                }
+                @case ('CmDonutChart') {
+                  <cm-donut-chart [data]="pipelineStages" [title]="index ? 'Carteira por etapa' : 'Oportunidades'"
+                    [totalLabel]="index ? 'oportunidades' : 'no funil'" [variant]="index ? 'segmented' : 'continuous'"
+                    [legendLayout]="index ? 'list' : 'inline'" [accessibleTableLabel]="index ? 'Distribuição da carteira por etapa comercial' : 'Oportunidades'" />
+                }
                 @case ('CmMap') {
                   <aurora-catalog-map [interactive]="index > 0" />
                 }
@@ -69,6 +87,10 @@
     <cm-disclosure title="Ver código do exemplo" [(open)]="sourceOpen">
       @if (sourceOpen()) {
         <div class="aurora-demo-source">
+          @if (chartMarkup; as snippet) {
+            <div class="aurora-filter-row"><strong>{{ example.name }}</strong><button cmButton variant="outline" size="sm" type="button" (click)="copy(snippet)">Copiar</button></div>
+            <pre><code>{{ snippet }}</code></pre>
+          }
           @for (tree of trees; track $index) {
             @if (tree?.length) {
               <div class="aurora-filter-row"><strong>{{ sections[$index]?.title }}</strong><button cmButton variant="outline" size="sm" type="button" (click)="copy(code(tree,example.name))">Copiar</button></div>
