@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
   CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
-  CmGridContainer, CmIcon, CmIconBadge, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
+  CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
   CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText, CmToastService,
 } from '@cosmemilton/ui-angular'
 import { OperationalData } from './operational-data'
@@ -44,7 +44,7 @@ const entryOptions = Object.entries(entryKindLabels).map(([value, label]) => ({v
 @Component({
   selector: 'aurora-feature-page',
   imports: [NgTemplateOutlet, RouterLink, CmBarChart, CmButton, CmCard, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
-    CmGridContainer, CmIcon, CmIconBadge, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
+    CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
     CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmText, Operations],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-page.html',
@@ -140,10 +140,8 @@ export class FeaturePage {
   })
   readonly owners = computed(() => [...new Set(this.data.opportunities.value().map(deal => deal.owner))].sort())
   readonly cashFlow = computed(() => getCashFlow(this.data.entries.value(), this.projection()))
-  readonly cashChart = computed<DashboardSection>(() => ({kind:'bar', title:this.cashFlow().chart.title,
-    description:this.cashFlow().chart.description,bars:this.cashFlow().chart.points,height:this.cashFlow().chart.height,formatter:this.cashFlow().chart.formatValue}))
   readonly financeRows = computed(() => mapRows(this.cashFlow().rows))
-  readonly financeColumns = computed(() => mapColumns(this.cashFlow().columns))
+  readonly financeColumns = computed(() => mapColumns(this.cashFlow().columns).map(column => ({...column, sortable:false})))
   readonly horizonOptions = horizonOptions
   readonly listingAction = computed(() => {
     if (this.path === '/app/crm/clientes') return {kind:'edit-client' as const,label:'Novo cliente',icon:'user-round-plus'}

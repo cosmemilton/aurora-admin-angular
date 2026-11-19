@@ -289,33 +289,38 @@
       <cm-data-table [rows]="scheduleRows()" [columns]="scheduleColumns()" label="Agenda técnica" [minimumWidth]="670" [pageSize]="0" emptyMessage="Nenhuma visita para esta data." (rowAction)="tableAction($event)" />
     </section>
   } @else if (path === '/app/financeiro/fluxo-de-caixa') {
-    <header class="aurora-page-header"><div><h1>{{ cashFlow().title }}</h1><p>{{ cashFlow().description }}</p></div>
-      <a cmButton variant="outline" [routerLink]="cashFlow().action.href">{{ cashFlow().action.label }}</a></header>
-    <section class="aurora-metrics" aria-label="Indicadores de fluxo de caixa">
+    <ng-template #cashActions><a cmLink variant="button" [routerLink]="cashFlow().action.href">{{ cashFlow().action.label }}</a></ng-template>
+    <header cmPageHeader layout="wrap" [title]="cashFlow().title" [description]="cashFlow().description" [actions]="cashActions"></header>
+    <section cmMetricGrid label="Indicadores de fluxo de caixa">
       @for (metric of cashFlow().metrics; track metric.title) {
-        <article class="aurora-metric" [attr.data-tone]="metric.tone">
-          <div class="aurora-metric-heading"><span>{{ metric.title }}</span><span class="aurora-metric-icon"><cm-icon [name]="metric.icon" /></span></div>
-          <strong class="aurora-metric-value">{{ metric.value }}</strong><p>{{ metric.description }}</p>
-        </article>
+        <cm-metric-card [title]="metric.title" [value]="metric.value" [description]="metric.description" [tone]="metric.tone"
+          [variant]="metric.variant ?? 'surface'" showIcon><cm-icon cmMetricIcon [name]="metric.icon" [size]="19" /></cm-metric-card>
       }
     </section>
-    <div class="aurora-grid-two aurora-dashboard-charts">
-      <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:cashChart()}" />
-      <section class="aurora-card">
-        <header class="aurora-card-header"><h2 class="aurora-section-title">Detalhes da projeção</h2></header>
-        <div class="aurora-card-body cm-stack">
-          <label class="aurora-native-field">Horizonte da projeção<select #horizon [value]="projection()" (change)="setProjection(horizon.value)">
-            @for (option of horizonOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
-          </select></label>
+    <div cmGridContainer autoFit minColumnWidth="26rem">
+      <section cmCard bodyPadding="md" [header]="chartHeader">
+        <ng-template #chartHeader><header cmSectionHeader [title]="cashFlow().chart.title" [description]="cashFlow().chart.description"></header></ng-template>
+        <cm-line-chart [data]="cashFlow().chart.points" [valueFormat]="cashFlow().chart.formatValue" [height]="cashFlow().chart.height"
+          [accessibleTableLabel]="cashFlow().chart.title" [tooltipFormat]="financeChartTooltip" />
+      </section>
+      <section cmCard bodyPadding="md" [header]="detailHeader">
+        <ng-template #detailHeader><header cmSectionHeader title="Detalhes da projeção"></header></ng-template>
+        <div cmStack gap="md">
+          <cm-native-select label="Horizonte da projeção" inputId="finance-projection-horizon" [value]="projection().toString()" [options]="horizonOptions" (valueChange)="setProjection($event)" />
+          <dl class="cm-summary-list cm-summary-list--rows cm-summary-list--divided">
           @for (item of cashFlow().summary; track item.label) {
-            <div class="aurora-list-item" style="justify-content:space-between"><div>{{ item.label }} @if (item.detail) { <small class="cm-text cm-text--sm cm-text--muted">{{ item.detail }}</small> }</div><strong>{{ item.value }}</strong></div>
+            <div class="cm-summary-list__item"><dt class="cm-summary-list__label">{{ item.label }}</dt><dd class="cm-summary-list__value">
+              @if (item.detail) { <div cmStack gap="xs"><p cmText weight="bold">{{ item.value }}</p><p cmText size="sm" tone="muted">{{ item.detail }}</p></div> }
+              @else { {{ item.value }} }
+            </dd></div>
           }
+          </dl>
         </div>
       </section>
     </div>
-    <section class="aurora-card">
-      <header class="aurora-card-header"><div><h2 class="aurora-section-title">Movimentação semanal</h2><p class="cm-text cm-text--muted">Valores previstos pela data de vencimento.</p></div></header>
-      <cm-data-table [rows]="financeRows()" [columns]="financeColumns()" [minimumWidth]="600" label="Movimentação semanal" />
+    <section cmCard bodyPadding="md" [header]="weeksHeader">
+      <ng-template #weeksHeader><header cmSectionHeader [title]="cashFlow().listTitle" [description]="cashFlow().listDescription"></header></ng-template>
+      <cm-data-table [rows]="financeRows()" [columns]="financeColumns()" [minimumWidth]="620" [pageSize]="0" label="Projeção semanal do fluxo de caixa" />
     </section>
   }
 </div>
