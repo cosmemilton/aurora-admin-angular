@@ -83,50 +83,61 @@
   } @else if (isolated) {
     <p class="aurora-empty">Exemplo não encontrado.</p>
   } @else {
-    <header class="aurora-page-header">
-      <div><h1>{{ match?.label ?? 'Catálogo de componentes' }}</h1>
-        <p>{{ match?.description ?? ('Explore os ' + total + ' componentes da cm-ui com exemplos do Aurora Ops.') }}</p>
+    <section cmPage fullWidth padding="none" gap="lg">
+      <ng-template #allCategories><a cmLink variant="button" [routerLink]="root">Todas as categorias</a></ng-template>
+      <header cmPageHeader layout="wrap" [title]="match?.label ?? 'Catálogo de componentes'"
+        [description]="match?.description ?? ('Explore os ' + total + ' componentes da cm-ui com exemplos do Aurora Ops.')"
+        [actions]="match ? allCategories : undefined"></header>
+      <div cmField control="native" label="Buscar componentes" htmlFor="catalog-search">
+        <input #searchInput id="catalog-search" type="search" [value]="query()" [placeholder]="match ? 'Buscar nesta categoria' : 'Nome, finalidade ou categoria'"
+          (input)="setQuery(searchInput.value)" />
       </div>
-      @if (match) { <a cmButton variant="outline" [routerLink]="root">Todas as categorias</a> }
-    </header>
-    <label class="aurora-native-field">Buscar componentes<input #search type="search" [value]="query()" placeholder="Nome ou API do componente" (input)="query.set(search.value)" /></label>
-    @if (!match && !query().trim()) {
-      <div class="aurora-catalog-grid">
-        @for (group of categories; track group.id) {
-          <article class="aurora-card">
-            <header class="aurora-card-header">
-              <div class="cm-row" data-align="center">
-                <span class="aurora-metric-icon" [attr.data-tone]="group.tone"><cm-icon [name]="group.icon" /></span>
-                <div><h2 class="aurora-section-title">{{ group.label }}</h2><p class="cm-text cm-text--sm cm-text--muted">{{ categoryEntries(group.id).length }} componentes</p></div>
-              </div>
-            </header>
-            <div class="aurora-card-body cm-stack">
-              <p class="cm-text cm-text--sm cm-text--muted">{{ group.description }}</p>
-              <details>
-                <summary>Ver componentes</summary>
-                <div class="cm-stack" style="--cm-layout-gap:.3rem;padding-block:.4rem">
-                  @for (entry of categoryEntries(group.id); track entry.path) {
-                    <a class="aurora-doc-link" [routerLink]="entry.path">{{ entry.label }}</a>
-                  }
+      @if (!match && !search()) {
+        <div cmStack gap="sm">
+          @for (group of groups; track group.id) {
+            <details class="cm-disclosure cm-density-compact" [open]="group.id === 'navegacao'">
+              <summary class="cm-disclosure__summary">
+                <span class="cm-disclosure__title">
+                  <span cmRow align="center" gap="sm"><span cmIconBadge size="sm" [tone]="group.tone"><cm-icon [name]="group.icon" [size]="17" /></span>{{ group.label }}</span>
+                </span>
+                <span class="cm-disclosure__meta">{{ group.entries.length }} componentes</span>
+              </summary>
+              <div class="cm-disclosure__content">
+                <div cmStack gap="md">
+                  <div cmGridContainer [columns]="{base:1,sm:2,lg:3}" spacing="sm">
+                    @for (entry of group.entries; track entry.path) { <a cmLink tone="primary" [routerLink]="entry.path">{{ entry.label }}</a> }
+                  </div>
+                  <a cmLink [routerLink]="root + '/' + group.id">Ver categoria {{ group.label.toLocaleLowerCase('pt-BR') }}</a>
                 </div>
-              </details>
-              <a [routerLink]="root+'/'+group.id" class="aurora-doc-link">Ver categoria {{ group.label.toLowerCase() }}</a>
+              </div>
+            </details>
+          }
+        </div>
+      } @else {
+        <div cmStack gap="md">
+          <p cmText tone="muted" role="status">{{ results().length }} {{ results().length === 1 ? 'componente encontrado' : 'componentes encontrados' }}</p>
+          @if (results().length) {
+            <div cmGridContainer minColumnWidth="min(100%, 19rem)" autoFit spacing="md">
+              @for (entry of results(); track entry.path) {
+                <div cmCard padding="md">
+                  <div cmStack gap="sm">
+                    <div cmRow gap="sm" align="center" wrap>
+                      <a cmLink tone="primary" [routerLink]="entry.path">{{ entry.label }}</a>
+                      @if (entry.reference) { <span cmBadge variant="outline">Referência</span> }
+                    </div>
+                    <p cmText family="mono" tone="muted" wrap="anywhere">{{ entry.name }}</p>
+                    <p cmText tone="muted">{{ entry.description }}</p>
+                  </div>
+                </div>
+              }
             </div>
-          </article>
-        }
-      </div>
-    } @else {
-      <p class="cm-text cm-text--sm cm-text--muted" role="status">{{ results().length }} {{ results().length === 1 ? 'componente encontrado' : 'componentes encontrados' }}</p>
-      <div class="aurora-catalog-grid">
-        @for (entry of results(); track entry.path) {
-          <article class="aurora-card aurora-card-body cm-stack" style="--cm-layout-gap:.5rem">
-            <h2 class="aurora-section-title"><a class="aurora-doc-link" [routerLink]="entry.path">{{ entry.label }}</a></h2>
-            <code class="cm-text cm-text--sm">{{ entry.name }}</code>
-            <p class="cm-text cm-text--sm cm-text--muted">{{ entry.description }}</p>
-          </article>
-        } @empty { <p class="aurora-empty">Nenhum componente encontrado.</p> }
-      </div>
-    }
+          } @else {
+            <div cmEmpty title="Nenhum componente encontrado" description="Experimente outro nome ou termo de busca."
+              actionLabel="Limpar busca" (action)="setQuery('')"></div>
+          }
+        </div>
+      }
+    </section>
   }
 </div>
 }

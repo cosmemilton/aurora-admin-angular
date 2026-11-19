@@ -49,7 +49,8 @@ const collator = new Intl.Collator('pt-BR')
 export const catalog = categories.flatMap(category => componentList[category.id].map(([name, label, description]) => {
   const slug = nameSlug(name)
   const categoryPath = categoryRoot + '/' + category.id
-  return { name, label, description, slug, category, categoryPath, path: categoryPath + '/' + slug }
+  return { name, label, description, slug, category, categoryPath, path: categoryPath + '/' + slug,
+    reference: name === 'CmAlert' || name === 'CmAlertDialog' }
 }).sort((a, b) => collator.compare(a.label, b.label)))
 export type CatalogItem = (typeof catalog)[number]
 

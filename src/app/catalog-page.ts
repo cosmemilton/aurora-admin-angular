@@ -1,8 +1,13 @@
 import { Location } from '@angular/common'
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
 import { DomSanitizer } from '@angular/platform-browser'
-import { ActivatedRoute, RouterLink } from '@angular/router'
-import { CmButton, CmCard, CmColumn, CmDataTable, CmDisclosure, CmGrid, CmGridContainer, CmPageHeader, CmSectionHeader, CmTableRow, CmThemeMenu, CmThemeService, CmToastService, CmIcon } from '@cosmemilton/ui-angular'
+import { ActivatedRoute, Router, RouterLink } from '@angular/router'
+import {
+  CmBadge, CmButton, CmCard, CmColumn, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
+  CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
+  CmThemeMenu, CmThemeService, CmToastService,
+} from '@cosmemilton/ui-angular'
 import { CatalogFrame, previewTheme } from './catalog-frame'
 import { CatalogMapDemo } from './catalog-map-demo'
 import { catalog, categories, categoryRoot, normalizeSearch } from './navigation'
@@ -18,13 +23,16 @@ const trees = rawTrees as unknown as Record<string,(FixtureChild[] | null)[]>
 
 @Component({
   selector:'aurora-catalog',
-  imports:[RouterLink,CmButton,CmCard,CmDataTable,CmDisclosure,CmGrid,CmGridContainer,CmPageHeader,CmSectionHeader,CmIcon,CmThemeMenu,FixtureTree,CatalogFrame,CatalogMapDemo],
+  imports: [RouterLink, CmBadge, CmButton, CmCard, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
+    CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
+    FixtureTree, CatalogFrame, CatalogMapDemo],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
 })
 export class CatalogPage {
   readonly route = inject(ActivatedRoute)
+  private readonly router = inject(Router)
   private readonly toast = inject(CmToastService)
   private readonly theme = inject(CmThemeService)
   private readonly sanitizer = inject(DomSanitizer)
@@ -38,8 +46,10 @@ export class CatalogPage {
   readonly item = catalog.find(entry=>entry.path===this.path)
   readonly match = categories.find(category=>this.path===categoryRoot+'/'+category.id)
   readonly root = categoryRoot
-  readonly categories = categories
-  readonly query = signal('')
+  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap })
+  readonly query = computed(() => this.queryParams().get('q') ?? '')
+  readonly search = computed(() => normalizeSearch(this.query()))
+  readonly groups = categories.map(category => ({ ...category, entries: catalog.filter(item => item.category.id === category.id) }))
   readonly total = catalog.length
   readonly examples = this.item ? examples[this.item.name] : undefined
   readonly trees = this.item ? trees[this.item.name] ?? [] : []
@@ -58,9 +68,9 @@ export class CatalogPage {
     }
   })
   readonly results = computed(() => {
-    const target = normalizeSearch(this.query())
+    const target = this.search()
     return catalog.filter(item => (!this.match || item.category.id === this.match.id)
-      && normalizeSearch(item.label+' '+item.name+' '+item.description+' '+item.slug.replaceAll('-',' ')).includes(target))
+      && normalizeSearch([item.label, item.name, item.slug.replaceAll('-', ' '), item.description, item.category.label].join(' ')).includes(target))
   })
   readonly selected = signal('')
   readonly columns: CmColumn[] = [
@@ -74,7 +84,11 @@ export class CatalogPage {
     {id:'5',cells:{contact:{label:'Raul Barreto',avatar:'RB',detail:'Ponte Sistemas'},city:'Recife, PE',value:121, status:{label:'Ativo',tone:'success'}}},
   ]
 
-  categoryEntries(id:string) { return catalog.filter(item => item.category.id===id) }
+  setQuery(value: string) {
+    void this.router.navigate([], {
+      relativeTo: this.route, queryParams: { q: value || null }, queryParamsHandling: 'merge', replaceUrl: true, preserveFragment: true,
+    })
+  }
   private parseMode(value: string | null): FrameMode | null { return value === 'basic' || value === 'advanced' ? value : null }
   announce(message = 'Alterações salvas.') { this.toast.show(message,{tone:'success'}) }
 

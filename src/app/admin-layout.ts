@@ -24,6 +24,7 @@ export class AdminLayout {
   readonly url = toSignal(this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd), map(event => event.urlAfterRedirects)), { initialValue: this.router.url })
   readonly path = computed(() => this.url().split(/[?#]/)[0].replace(/\/+$/, '').toLowerCase())
   readonly inCatalog = computed(() => this.path() === categoryRoot || this.path().startsWith(categoryRoot + '/'))
+  private readonly scrollAddress = computed(() => this.inCatalog() ? this.url().replace(/^([^?#]*)\?[^#]*/, '$1') : this.url())
   readonly groups = computed(() => this.inCatalog() ? catalogNav : navigation)
   readonly drawer = signal(false)
   readonly profile = signal(false)
@@ -53,7 +54,7 @@ export class AdminLayout {
 
   constructor() {
     effect(() => {
-      const address = this.url()
+      const address = this.scrollAddress()
       this.doc.title = this.crumb().title + ' | Aurora Ops'
       const fragment = address.split('#')[1]
       if (fragment) requestAnimationFrame(() => this.doc.getElementById(fragment)?.scrollIntoView())
