@@ -59,6 +59,9 @@ export class FeaturePage {
   readonly queryParams = toSignal(this.activated.queryParamMap, {initialValue:this.activated.snapshot.queryParamMap})
   readonly query = signal('')
   readonly status = signal('')
+  private readonly serviceListing = this.path === '/app/servicos/ordens'
+  protected readonly listingStatus = computed(() => this.serviceListing
+    ? statuses.find(value => value === this.queryParams().get('situacao')) ?? '' : this.status())
   readonly entryKind = signal('')
   readonly entryKinds = entryOptions
   readonly financeListing = this.path === '/app/financeiro/lancamentos'
@@ -90,6 +93,7 @@ export class FeaturePage {
   readonly categoryRoot = categoryRoot
   readonly stageOptions = opportunityStages
   readonly money = financeMoney
+  protected readonly financeChartTooltip = (point: { label: string; value: number }) => `${point.label}: ${financeMoney(point.value)}`
   readonly crmCurrency = formatCrmCurrency
   readonly crmDate = formatCrmShortDate
   readonly dateLabel = displayDate
@@ -98,7 +102,7 @@ export class FeaturePage {
   readonly filteredListing = computed(() => {
     const listing = this.initialListing()
     if (!listing) return []
-    const matches = filterListing(listing, this.query(), this.status())
+    const matches = filterListing(listing, this.query(), this.listingStatus())
     const kind = this.entryKind()
     if (!this.financeListing || !kind) return matches
     const ids = new Set(this.data.entries.value().filter(entry => entry.kind === kind).map(entry => entry.id))
@@ -351,6 +355,13 @@ export class FeaturePage {
   sectionRows(section: DashboardSection) { return section.kind === 'table' ? mapRows(section.rows) : [] }
   sectionColumns(section: DashboardSection) { return section.kind === 'table' ? mapColumns(section.columns) : [] }
   updateDay(value: string) { this.day.set(value) }
+  protected changeListingStatus(status: string) {
+    if (this.serviceListing) {
+      void this.router.navigate([], { relativeTo: this.activated, queryParams: { situacao: status || null }, queryParamsHandling: 'merge', replaceUrl: true })
+    } else {
+      this.status.set(status)
+    }
+  }
   today() { this.day.set(localDate()) }
   setPeriod(value: string) { this.period.set(Number(value) as DashboardPeriod) }
   setProjection(value: string) { this.projection.set(Number(value)) }

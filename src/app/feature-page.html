@@ -1,6 +1,16 @@
 <ng-template #section let-item>
   @if (item.kind === 'bar' && path === '/app/dashboard/servicos') {
-    <cm-bar-chart [title]="item.title" [description]="item.description" [data]="item.bars" [height]="item.height" orientation="horizontal" />
+    <div class="cm-chart-frame" [style.--cm-chart-frame-height]="item.height + 'px'" data-cm-chart-frame-height>
+      <div class="cm-chart-frame__header">
+        <div class="cm-chart-frame__heading">
+          <div class="cm-chart-frame__title" role="heading" aria-level="2">{{ item.title }}</div>
+          <div class="cm-chart-frame__description">{{ item.description }}</div>
+        </div>
+      </div>
+      <div class="cm-chart-frame__body">
+        <cm-bar-chart [data]="item.bars" [accessibleTableLabel]="item.title" orientation="horizontal" />
+      </div>
+    </div>
   } @else {
   <section cmCard bodyPadding="md" [header]="sectionHeader">
     <ng-template #sectionHeader>
@@ -15,9 +25,9 @@
       @case ('bar') {
         <div cmStack gap="md">
           @if (item.bars.length) {
-            <cm-bar-chart [data]="item.bars" [height]="item.height ?? 300" [valueFormat]="item.formatter ?? number.format"
+            <cm-bar-chart [data]="item.bars" [style.--cm-chart-frame-height]="item.height ? item.height + 'px' : null" [valueFormat]="item.formatter ?? number.format"
               [accessibleTableLabel]="path === '/app/dashboard/crm' ? 'Valor por etapa do funil' : item.title"
-              [showValues]="path !== '/app/dashboard/financeiro'" orientation="horizontal" />
+              [tooltipFormat]="path === '/app/dashboard/financeiro' ? financeChartTooltip : undefined" orientation="horizontal" />
           } @else {
             <div cmEmpty [title]="item.emptyTitle ?? 'Nenhum dado para exibir'"></div>
           }
@@ -45,6 +55,40 @@
       @case ('table') {
         <cm-data-table [columns]="sectionColumns(item)" [rows]="sectionRows(item)" [minimumWidth]="item.minWidth" [pageSize]="0"
           [label]="item.title" [emptyMessage]="item.emptyTitle ?? 'Nenhum registro encontrado.'" (rowAction)="tableAction($event)" />
+      }
+      @case ('timeline') {
+        @if (item.items.length) {
+          <ol class="cm-timeline" [class]="item.connected ? 'cm-timeline--variant-connected' : 'cm-timeline--variant-default'"
+            [style.--cm-timeline-label-width]="item.connected ? '52px' : null">
+            @for (row of item.items; track row.id) {
+              <li class="cm-timeline__item">
+                @if (item.connected) { <div class="cm-timeline__label">{{ row.label }}</div> }
+                <div class="cm-timeline__rail" aria-hidden="true">
+                  @if (item.items.length > 1) {
+                    <span class="cm-timeline__connector" [class.cm-timeline__connector--first]="$first" [class.cm-timeline__connector--last]="$last"></span>
+                  }
+                  <span [class]="'cm-timeline__marker cm-timeline__marker--tone-' + (row.tone ?? 'primary')"></span>
+                </div>
+                <div class="cm-timeline__content">
+                  <div class="cm-timeline__main">
+                    <div class="cm-timeline__title">
+                      @if (row.href) { <a cmLink tone="primary" [routerLink]="router.parseUrl(row.href)">{{ row.title }}</a> }
+                      @else { {{ row.title }} }
+                    </div>
+                    <div class="cm-timeline__description">{{ row.description }}</div>
+                  </div>
+                  @if (row.action; as action) {
+                    <div class="cm-timeline__trailing">
+                      <a cmLink [tone]="action.tone ?? 'default'" [routerLink]="router.parseUrl(action.href)">{{ action.label }}</a>
+                    </div>
+                  }
+                </div>
+              </li>
+            }
+          </ol>
+        } @else {
+          <div cmEmpty [title]="item.emptyTitle ?? 'Nenhum registro encontrado'"></div>
+        }
       }
       @default {
         <div class="aurora-list">
@@ -177,7 +221,7 @@
           <cm-native-select class="aurora-grow" label="Tipo" placeholder="Todos os tipos" [options]="entryKinds" [value]="entryKind()" (valueChange)="entryKind.set($event)" />
         }
         @if (listing.statusOptions; as options) {
-          <cm-native-select class="aurora-grow" label="Situação" placeholder="Todas as situações" [options]="options" [value]="status()" (valueChange)="status.set($event)" />
+          <cm-native-select class="aurora-grow" label="Situação" placeholder="Todas as situações" [options]="options" [value]="listingStatus()" (valueChange)="changeListingStatus($event)" />
         }
       </div>
       <cm-data-table [rows]="tableRows()" [columns]="tableColumns()" [label]="listing.tableTitle" [minimumWidth]="listing.minimumTableWidth" [pageSize]="listingPageSize"
