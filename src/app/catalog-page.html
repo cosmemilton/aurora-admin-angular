@@ -13,7 +13,8 @@
     @for (section of sections; track section.title;let index = $index) {
       <div cmGrid [span]="section.wide ? {base:1,lg:2} : 1">
         <ng-template #panelHeader><header cmSectionHeader [title]="section.title" [description]="section.description"></header></ng-template>
-        <section cmCard [header]="panelHeader" role="region" [attr.aria-label]="section.title">
+        <section cmCard [header]="panelHeader" role="region" [attr.aria-label]="section.title"
+          [style.height]="example.name === 'CmSignaturePad' ? '100%' : null">
               @if (section.frame; as frame) {
                 <iframe class="cm-frame cm-frame--framed" height="320" style="--cm-frame-height:320px" [src]="frameSources()?.[frame]"
                   [attr.title]="example.name + ' · ' + (frame === 'basic' ? 'Básico' : 'Em uso')"></iframe>
@@ -47,6 +48,19 @@
                 }
                 @case ('CmScheduler') {
                   <aurora-catalog-scheduler [advanced]="index > 0" />
+                }
+                @case ('CmSignaturePad') {
+                  @if (index === 0) {
+                    <cm-signature-pad [height]="144" ariaLabel="Desenhar assinatura" clearLabel="Limpar" />
+                  } @else {
+                    <div cmStack gap="sm">
+                      <cm-signature-pad [height]="144" ariaLabel="Assinar o comprovante"
+                        clearLabel="Limpar assinatura" (valueChange)="signatureImage.set($event)" />
+                      @if (signatureImage(); as image) {
+                        <img [src]="image" alt="Assinatura capturada para o comprovante" style="max-width:100%">
+                      }
+                    </div>
+                  }
                 }
                 @case ('CmRatioBar') {
                   @if (index === 0) {

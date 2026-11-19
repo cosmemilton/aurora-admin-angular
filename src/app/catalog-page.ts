@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
   CmBadge, CmBarChart, CmButton, CmCard, CmCheckbox, CmColumn, CmComparisonLineChart, CmDataTable, CmDisclosure, CmDonutChart, CmEmpty, CmField, CmGrid, CmGridContainer,
   CmIcon, CmIconBadge, CmLink, CmNativeSelect, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
-  CmRatioBar, CmSummaryList, CmThemeMenu, CmThemeService, CmToastService,
+  CmRatioBar, CmSignaturePad, CmSummaryList, CmThemeMenu, CmThemeService, CmToastService,
   type CmButtonVariant, type CmTone,
 } from '@cosmemilton/ui-angular'
 import { CatalogFrame, previewTheme } from './catalog-frame'
@@ -54,7 +54,8 @@ const buttonSampleGroups: readonly ButtonSampleGroup[] = [
   selector:'aurora-catalog',
   imports: [RouterLink, CmBadge, CmButton, CmCard, CmCheckbox, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
     CmIcon, CmIconBadge, CmLink, CmNativeSelect, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
-    FixtureTree, CatalogFrame, CatalogGallery, CatalogMapDemo, CatalogScheduler, CmBarChart, CmComparisonLineChart, CmDonutChart, CmRatioBar, CmSummaryList],
+    FixtureTree, CatalogFrame, CatalogGallery, CatalogMapDemo, CatalogScheduler, CmBarChart, CmComparisonLineChart, CmDonutChart, CmRatioBar,
+    CmSignaturePad, CmSummaryList],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
@@ -81,7 +82,7 @@ export class CatalogPage {
   readonly groups = categories.map(category => ({ ...category, entries: catalog.filter(item => item.category.id === category.id) }))
   readonly total = catalog.length
   readonly examples = this.item ? examples[this.item.name] : undefined
-  readonly trees = this.item ? trees[this.item.name] ?? [] : []
+  readonly trees = this.item && this.item.name !== 'CmSignaturePad' ? trees[this.item.name] ?? [] : []
   readonly sections: Section[] = this.examples?.sections?.length ? this.examples.sections : [{title:this.item?.label ?? 'Exemplo'}]
   readonly sourceOpen = signal(false)
   readonly validFrame = this.sections.some(section => section.frame === this.frameMode)
@@ -116,9 +117,8 @@ export class CatalogPage {
   readonly weeklyPoints = weeklyPoints
   readonly revenueAxis = revenueAxis
   readonly orderAxis = orderAxis
-  readonly exampleMarkup = this.item?.name === 'CmButton'
-    ? '<button cmButton tone="primary" type="button">Salvar</button>'
-    : this.item && chartMarkup[this.item.name]
+  readonly signatureImage = signal<string | null>(null)
+  readonly exampleMarkup = this.getExampleMarkup()
   readonly shifts = [{ label: 'Atendimento', value: 24, tone: 'primary' }, { label: 'Plantão', value: 16, tone: 'success' }]
   readonly hours = signal(this.shifts.map(shift => shift.value))
   readonly shiftSegments = computed(() => this.shifts.map((shift, i) => ({ ...shift, value: this.hours()[i]!, min: 4 })))
@@ -137,6 +137,17 @@ export class CatalogPage {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.approvalTimer))
+  }
+
+  private getExampleMarkup() {
+    const name = this.item?.name
+    if (name === 'CmButton') return '<button cmButton tone="primary" type="button">Salvar</button>'
+    if (name === 'CmSignaturePad') return '<cm-signature-pad [height]="144" ariaLabel="Assinar o comprovante"\n'
+      + '  clearLabel="Limpar assinatura" (valueChange)="signatureImage.set($event)" />\n'
+      + '@if (signatureImage(); as image) {\n'
+      + '  <img [src]="image" alt="Assinatura capturada para o comprovante">\n'
+      + '}'
+    return name && chartMarkup[name]
   }
 
   selectButtonSample(group: number, option: number) {

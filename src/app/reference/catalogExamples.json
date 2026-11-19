@@ -1009,7 +1009,7 @@
     ]
   },
   "CmSignaturePad": {
-    "source": "formularios/workflows.tsx",
+    "source": "src/app/catalog-page.html",
     "sections": [
       {
         "title": "Assinatura à mão livre"
