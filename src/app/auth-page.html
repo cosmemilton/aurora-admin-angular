@@ -1,0 +1,99 @@
+<cm-auth-layout brand="Aurora Ops" brandIcon="activity" [title]="page.title" [icon]="page.icon ?? ''"
+  [description]="description()" [eyebrow]="mode === 'not-found' ? 'Erro 404' : ''" [layout]="split ? 'split' : 'centered'"
+  [appearance]="login ? 'glass' : 'plain'"
+  [backgroundImage]="mode === 'login-v1' ? art[theme.name()].background : ''"
+  [artworkImage]="split ? art[theme.name()].artwork : ''">
+  @if (login) {
+    <a cmAuthActions class="cm-auth__switch" [routerLink]="alternate" [state]="state" queryParamsHandling="preserve" [preserveFragment]="true">
+      {{ split ? 'LoginV1' : 'LoginV2' }} <cm-icon name="arrow-up-right" [size]="15" />
+    </a>
+  }
+  @if (login) {
+    <div cmAuthFooter class="cm-row cm-layout-wrap" data-align="center" data-justify="between" style="--cm-layout-gap:var(--space-xs)">
+      <p class="cm-text cm-text--sm cm-text--muted">
+        @if (!split) { Ainda não tem uma conta? }
+        <a [routerLink]="paths.register" [state]="accountState">Inscreva-se</a>
+      </p>
+      <cm-theme-menu buttonClass="cm-auth__theme-menu" />
+    </div>
+  } @else if (mode !== 'not-found') {
+    <a cmAuthFooter class="cm-auth-link" [routerLink]="back" [state]="state">Voltar ao login</a>
+  }
+  @if (login) {
+    <form class="cm-form cm-form--plain cm-form--layout-stack cm-auth-form" style="--cm-form-gap:var(--space-md)" (submit)="submit($event)" (input)="clear()" novalidate>
+      <div class="cm-form__body">
+        <cm-auth-field name="identifier" label="Usuário ou e-mail" icon="user-round" autocomplete="username" externalLabel required
+          [value]="prefilledIdentifier ?? demo.identifier" [invalid]="invalid() === 'identifier'" />
+        <cm-auth-field name="password" label="Senha" type="password" autocomplete="current-password" externalLabel required
+          [value]="prefilledIdentifier === undefined ? demo.password : ''" [invalid]="invalid() === 'password'" />
+        <div class="cm-row cm-layout-wrap cm-auth__form-links" data-justify="between" style="--cm-layout-gap:var(--space-xs)">
+          <a class="cm-auth-link" [routerLink]="paths.recoverEmail" [state]="accountState">{{ split ? 'Recuperar e-mail' : 'Esqueci meu e-mail' }}</a>
+          <a class="cm-auth-link" [routerLink]="paths.recoverPassword" [state]="accountState">{{ split ? 'Recuperar senha' : 'Esqueci minha senha' }}</a>
+        </div>
+        <div class="cm-stack" style="--cm-layout-gap:var(--space-sm)">
+          <button cmButton tone="primary" size="lg" fullWidth type="submit" class="cm-auth__submit" [disabled]="loading()" [attr.aria-busy]="loading() || null">
+            {{ loading() ? 'Entrando…' : 'Entrar' }} <cm-icon name="arrow-right" [size]="18" />
+          </button>
+          <p class="cm-text cm-text--sm cm-text--muted cm-auth__demo-hint" style="text-align:center">
+            Usuário <code>{{ demo.identifier }}</code> · Senha <code>{{ demo.password }}</code>
+          </p>
+        </div>
+      </div>
+    </form>
+  } @else if (mode === 'not-found') {
+    <div class="cm-row"><a cmButton tone="primary" [routerLink]="auth.user() ? paths.dashboard : paths.loginV1">
+      {{ auth.user() ? 'Voltar ao dashboard' : 'Ir para o login' }}
+    </a></div>
+  } @else {
+    @if (mode === 'set-password' && !tokenValid()) {
+      <a class="cm-auth-link" [routerLink]="paths.recoverPassword" [state]="state">Solicitar link de recuperação</a>
+    } @else {
+      <form class="cm-form cm-form--plain cm-form--layout-stack cm-auth-form" [style.--cm-form-gap]="mode === 'register' ? 'var(--space-sm)' : 'var(--space-lg)'" (submit)="submit($event)" (input)="clear()" novalidate>
+        <div class="cm-form__body">
+          @switch (mode) {
+            @case ('register') {
+              <cm-auth-field name="name" label="Nome completo" autocomplete="name" required [invalid]="invalid() === 'name'" />
+              <cm-auth-field name="email" label="E-mail" type="email" autocomplete="email" required [invalid]="invalid() === 'email'" />
+              <cm-auth-field name="username" label="Usuário" autocomplete="username" required [invalid]="invalid() === 'username'" />
+              <cm-auth-field name="password" label="Senha" type="password" autocomplete="new-password" required [hint]="passwordHint" [invalid]="invalid() === 'password'" />
+            }
+            @case ('recover-email') {
+              <cm-auth-field name="username" label="Usuário" autocomplete="username" required [invalid]="invalid() === 'username'" />
+            }
+            @case ('recover-password') {
+              <cm-auth-field name="email" label="E-mail cadastrado" type="email" autocomplete="email" required [invalid]="invalid() === 'email'" />
+            }
+            @case ('set-password') {
+              <cm-auth-field name="password" label="Nova senha" type="password" autocomplete="new-password" required [hint]="passwordHint" [invalid]="invalid() === 'password'" />
+              <cm-auth-field name="confirmation" label="Confirme a senha" type="password" autocomplete="new-password" required [invalid]="invalid() === 'confirmation'" />
+            }
+          }
+          <button cmButton tone="primary" size="lg" fullWidth type="submit" [disabled]="loading()" [attr.aria-busy]="loading() || null">
+            {{ loading() && mode === 'register' ? 'Criando conta' : loading() && mode === 'set-password' ? 'Salvando senha' : submitLabel[mode] }}
+            @if (mode === 'register') { <cm-icon name="arrow-right" [size]="18" /> }
+          </button>
+          @if (mode === 'recover-email') {
+            @if (masked(); as email) {
+              <div class="cm-stack cm-layout-surface-muted" role="status" style="padding:1rem;--cm-layout-gap:.25rem">
+                <span class="cm-text cm-text--sm cm-text--muted">E-mail vinculado</span>
+                <strong>{{ email }}</strong>
+              </div>
+            }
+            <a class="cm-auth-link" [routerLink]="paths.recoverPassword" [state]="state">Esqueci minha senha</a>
+          }
+          @if (mode === 'recover-password') {
+            @if (resetLink(); as reset) {
+              <div class="cm-stack cm-layout-surface-muted" style="padding:1rem;--cm-layout-gap:.25rem">
+                <span class="cm-text cm-text--sm cm-text--muted">Link da demonstração. Válido por 30 minutos e para um único uso.</span>
+                <a class="cm-auth-link" [routerLink]="paths.setPassword" [queryParams]="{token: reset}" [state]="state">Abrir link para cadastrar nova senha</a>
+              </div>
+            } @else {
+              <p class="cm-text cm-text--sm cm-text--muted">Na demonstração, o link aparece aqui após a consulta.</p>
+            }
+            <a class="cm-auth-link" [routerLink]="paths.recoverEmail" [state]="state">Esqueci meu e-mail</a>
+          }
+        </div>
+      </form>
+    }
+  }
+</cm-auth-layout>

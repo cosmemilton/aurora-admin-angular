@@ -1,0 +1,319 @@
+<ng-template #section let-item>
+  <section class="aurora-card">
+    <header class="aurora-card-header">
+      <div>
+        <h2 class="aurora-section-title">{{ item.title }}</h2>
+        @if (item.description) { <p class="cm-text cm-text--sm cm-text--muted">{{ item.description }}</p> }
+      </div>
+      @if (item.action) {
+        <a cmButton variant="outline" size="sm" [routerLink]="item.action.href">{{ item.action.label }} <cm-icon [name]="item.action.icon ?? 'arrow-right'" [size]="16" /></a>
+      }
+    </header>
+    @switch (item.kind) {
+      @case ('bar') {
+        <div class="aurora-chart" role="img" [attr.aria-label]="item.title" [style.min-height.px]="item.height ?? 240">
+          @for (bar of item.bars; track bar.label) {
+            <div class="aurora-bar-column">
+              <span class="aurora-bar-value">{{ item.formatter ? item.formatter(bar.value) : bar.value }}</span>
+              <div class="aurora-bar" [attr.data-tone]="bar.tone ?? 'primary'" [style.height.px]="barHeight(bar.value, item.bars)" [title]="bar.label + ' · ' + bar.value"></div>
+              <span>{{ bar.label }}</span>
+            </div>
+          }
+        </div>
+        @if (item.note) { <div class="aurora-card-body"><strong>{{ item.note.title }}</strong><p class="cm-text cm-text--muted">{{ item.note.description }}</p></div> }
+      }
+      @case ('progress') {
+        <div class="aurora-card-body cm-stack">
+          @for (bar of item.bars; track bar.label) {
+            <div class="cm-stack" style="--cm-layout-gap:.375rem">
+              <div class="cm-row" data-justify="between"><span>{{ bar.label }}</span><strong>{{ bar.value }}</strong></div>
+              <progress class="aurora-progress" [value]="bar.value" [max]="item.max" [attr.aria-label]="bar.label"></progress>
+            </div>
+          }
+        </div>
+      }
+      @case ('table') {
+        <cm-data-table [columns]="sectionColumns(item)" [rows]="sectionRows(item)" [minimumWidth]="item.minWidth" [pageSize]="0"
+          [label]="item.title" [emptyMessage]="item.emptyTitle ?? 'Nenhum registro encontrado.'" (rowAction)="tableAction($event)" />
+      }
+      @default {
+        <div class="aurora-card-body aurora-list">
+          @for (row of item.items; track row.id) {
+            <div class="aurora-list-item">
+              @if (row.avatar) { <span class="aurora-avatar">{{ row.avatar }}</span> }
+              <div>
+                @if (row.href) { <a class="cm-link cm-link--tone-primary" [routerLink]="row.href"><strong>{{ row.title }}</strong></a> } @else { <strong>{{ row.title }}</strong> }
+                <p class="cm-text cm-text--sm cm-text--muted">{{ row.description }}</p>
+              </div>
+              @if (row.badge) { <span [class]="'cm-badge cm-badge--soft cm-badge--' + (row.tone ?? 'default')">{{ row.badge }}</span> }
+              @if (row.value) { <strong>{{ row.value }}</strong> }
+              @if (row.action) { <a cmButton size="sm" variant="outline" [routerLink]="row.action.href">{{ row.action.label }}</a> }
+            </div>
+          } @empty { <p class="cm-text cm-text--muted">{{ item.emptyTitle ?? 'Nenhum registro encontrado.' }}</p> }
+        </div>
+      }
+    }
+  </section>
+</ng-template>
+
+<div class="aurora-page">
+  @if (path === '/app/dashboard') {
+    <header cmPageHeader title="Visão geral" layout="wrap" [description]="'Desempenho da operação · ' + periodInfo().interval" [actions]="chartActions"></header>
+    <ng-template #chartActions>
+      <div cmRow gap="sm" align="end" wrap>
+        <cm-native-select label="Período do dashboard" [options]="periods" [value]="period().toString()" (valueChange)="setPeriod($event)" />
+        <button cmButton type="button" tone="primary" (click)="exportMetrics()"><cm-icon name="download" [size]="16" />Exportar CSV</button>
+      </div>
+    </ng-template>
+    <div cmCard variant="gradient" tone="primary" pattern="orbits" padding="lg" role="region" aria-labelledby="overview-goal-title" [aside]="goalProgress">
+      <div cmStack gap="xs">
+        <div cmRow align="center" gap="xs">
+          <cm-icon name="sparkles" [size]="15" />
+          <p cmText size="xs" weight="semibold" tone="inherit">Destaque do período</p>
+        </div>
+        <h2 cmText id="overview-goal-title" size="3xl" weight="extrabold" tracking="tight" family="heading" tone="inherit">Meta de receita ao alcance</h2>
+        <p cmText tone="inherit">Faltam {{ currency.format(periodInfo().goal - periodInfo().revenue) }} para atingir a meta.</p>
+      </div>
+    </div>
+    <ng-template #goalProgress>
+      <div cmStack gap="sm">
+        <cm-progress tone="inherit" label="Meta de receita" [value]="periodInfo().revenue" [max]="periodInfo().goal" showValue />
+        <p cmText size="xs" tone="inherit">{{ currency.format(periodInfo().revenue) }} de {{ currency.format(periodInfo().goal) }}</p>
+      </div>
+    </ng-template>
+    <div cmMetricGrid label="Indicadores principais" aria-live="polite">
+      @for (metric of dashboardMetrics(); track metric.id; let i = $index) {
+        <cm-metric-card [title]="metric.label" [value]="metric.value" [tone]="metric.tone" [trend]="metric.change" showIcon variant="gradient">
+          <cm-icon cmMetricIcon [name]="overviewIcons[i]" [size]="18" />
+        </cm-metric-card>
+      }
+    </div>
+    <section id="analise" cmGridContainer [columns]="1" class="cm-grid-container--template" aria-label="Análise de desempenho"
+      style="--grid-template-columns-base:minmax(0,1fr);--grid-template-columns-sm:minmax(0,1fr);--grid-template-columns-md:minmax(0,1fr);--grid-template-columns-lg:minmax(0,1fr);--grid-template-columns-xl:minmax(0,1.95fr) minmax(0,1fr)">
+      <div cmCard>
+        <cm-comparison-line-chart title="Receita e pedidos" description="Receita em reais e volume de pedidos" accessibleTableLabel="Receita e pedidos no período"
+          curve="smooth" xLabels="responsive" legendPosition="header" [height]="216" [data]="overviewChart().points" [leftAxis]="overviewChart().leftAxis" [rightAxis]="overviewChart().rightAxis" />
+      </div>
+      <div cmCard>
+        <cm-donut-chart title="Tráfego do site" description="Sessões por canal de aquisição" accessibleTableLabel="Sessões e participação por canal"
+          variant="segmented" legendLayout="list" totalLabel="sessões" [data]="overviewChart().channels" [valueFormat]="number.format" />
+      </div>
+    </section>
+    <section cmStack gap="md" aria-label="Acesso rápido">
+      <header cmSectionHeader title="Acesso rápido"></header>
+      <div cmGridContainer [columns]="{base:1,sm:2,xl:4}">
+        @for (shortcut of shortcuts; track shortcut.href) {
+          <a cmLink variant="card" [routerLink]="shortcut.href">
+            <div cmRow align="center" fullWidth gap="sm">
+              <span cmIconBadge [tone]="shortcut.tone" aria-hidden="true"><cm-icon [name]="shortcut.icon" [size]="18" /></span>
+              <div cmStack grow [minWidth]="0" gap="none"><p cmText weight="semibold" wrap="anywhere">{{ shortcut.label }}</p><p cmText size="xs" tone="muted">{{ shortcut.area }}</p></div>
+              <cm-icon name="arrow-up-right" [size]="15" />
+            </div>
+          </a>
+        }
+      </div>
+    </section>
+    <aurora-operations />
+  } @else if (domain(); as model) {
+    <header class="aurora-page-header">
+      <div><h1>{{ model.title }}</h1><p>{{ model.description }}</p></div>
+      @if (model.actions.length) {
+        <div class="aurora-page-actions">
+          @for (action of model.actions; track action.href) {
+            <a cmButton [tone]="action.tone === 'primary' ? 'primary' : 'default'" [variant]="action.tone === 'primary' ? 'solid' : 'outline'" [routerLink]="action.href">
+              @if (action.icon) { <cm-icon [name]="action.icon" [size]="16" /> }{{ action.label }}
+            </a>
+          }
+        </div>
+      }
+    </header>
+    <section class="aurora-metrics" [attr.aria-label]="model.metricLabel">
+      @for (metric of model.metrics; track metric.title) {
+        <article class="aurora-metric" [attr.data-tone]="metric.tone">
+          <div class="aurora-metric-heading"><span>{{ metric.title }}</span><span class="aurora-metric-icon"><cm-icon [name]="metric.icon" [size]="18" /></span></div>
+          <strong class="aurora-metric-value">{{ metric.value }}</strong><p>{{ metric.description }}</p>
+        </article>
+      }
+    </section>
+    <div class="aurora-grid-two">
+      @for (item of model.sections; track item.title) { <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:item}" /> }
+    </div>
+    @if (model.bottom; as bottom) { <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:bottom}" /> }
+  } @else if (initialListing(); as listing) {
+    <header class="aurora-page-header">
+      <div><h1>{{ listing.title }}</h1><p>{{ listing.description }}</p></div>
+      @if (listingAction(); as action) {
+        <button cmButton type="button" tone="primary" (click)="open(action.kind)"><cm-icon [name]="action.icon" [size]="17" />{{ action.label }}</button>
+      }
+    </header>
+    <section class="aurora-card">
+      <header class="aurora-card-header">
+        <div><h2 class="aurora-section-title">{{ listing.tableTitle }}</h2><p class="cm-text cm-text--sm cm-text--muted" aria-live="polite">{{ listingSummary() }}</p></div>
+        <div class="aurora-popup-anchor">
+          <button cmButton type="button" variant="outline" size="sm" [attr.aria-expanded]="columnsMenu()" (click)="columnsMenu.set(!columnsMenu())">Colunas <cm-icon name="chevron-down" [size]="15" /></button>
+          @if (columnsMenu()) {
+            <div class="aurora-user-popup" aria-label="Colunas da tabela">
+              @for (column of listing.columns; track column.key) {
+                @if (column.hideable !== false) {
+                  <label><input type="checkbox" [checked]="visibleColumns()[column.key] ?? !column.defaultHidden" (change)="setColumn(column,$event)" />{{ column.header }}</label>
+                }
+              }
+            </div>
+          }
+        </div>
+      </header>
+      <div class="aurora-filter-row" [attr.aria-label]="listing.filterLabel">
+        <cm-native-input class="aurora-grow" type="search" [label]="listing.queryLabel" [placeholder]="listing.queryPlaceholder" [value]="query()" (valueChange)="query.set($event)" />
+        @if (financeListing) {
+          <cm-native-select class="aurora-grow" label="Tipo" placeholder="Todos os tipos" [options]="entryKinds" [value]="entryKind()" (valueChange)="entryKind.set($event)" />
+        }
+        @if (listing.statusOptions; as options) {
+          <cm-native-select class="aurora-grow" label="Situação" placeholder="Todas as situações" [options]="options" [value]="status()" (valueChange)="status.set($event)" />
+        }
+      </div>
+      <cm-data-table [rows]="tableRows()" [columns]="tableColumns()" [label]="listing.tableTitle" [minimumWidth]="listing.minimumTableWidth" [pageSize]="listingPageSize"
+        [emptyMessage]="listing.emptyTitle + '. ' + listing.emptyDescription" (rowAction)="tableAction($event)" />
+    </section>
+    @if (selectedOrder(); as order) {
+      <section class="aurora-card">
+        <header class="aurora-card-header">
+          <div><h2 class="aurora-section-title">Pedido #{{ order.id }}</h2><p class="cm-text cm-text--muted">{{ order.customer }} · {{ order.payment }}</p></div>
+          <button cmButton type="button" variant="outline" (click)="open('select-order',order.id)">Alterar status</button>
+        </header>
+        <cm-data-table [columns]="orderItemColumns" [rows]="orderItemRows()" [pageSize]="0" label="Itens do pedido" />
+        <div class="aurora-card-body cm-row" data-justify="between"><strong>Total do pedido</strong><strong>{{ orderMoney(total(order)) }}</strong></div>
+      </section>
+    }
+  } @else if (report(); as model) {
+    <header class="aurora-page-header">
+      <div><h1>{{ model.name }}</h1><p>{{ model.description }}</p></div>
+      <div class="aurora-page-actions aurora-popup-anchor">
+        <div class="aurora-split-buttons">
+          <button cmButton type="button" tone="primary" (click)="exportReport('pdf')"><cm-icon name="download" [size]="16" /> Exportar PDF</button>
+          <button cmButton type="button" tone="primary" iconOnly aria-label="Outros formatos" [attr.aria-expanded]="downloadMenu()" (click)="downloadMenu.set(!downloadMenu())"><cm-icon name="chevron-down" [size]="16" /></button>
+        </div>
+        @if (downloadMenu()) {
+          <div class="aurora-user-popup" role="menu" aria-label="Formatos de exportação">
+            <button type="button" role="menuitem" (click)="exportReport('csv')">Baixar CSV</button>
+            <button type="button" role="menuitem" (click)="exportReport('json')">Baixar JSON</button>
+          </div>
+        }
+      </div>
+    </header>
+    <section class="aurora-card">
+      <header class="aurora-card-header">
+        <div><h2 class="aurora-section-title">Prévia do relatório</h2><p class="cm-text cm-text--sm cm-text--muted">{{ reportRows().length }} registros</p></div>
+        <label class="aurora-native-field">Situação<select #reportStatus [value]="status()" (change)="status.set(reportStatus.value)">
+          <option value="">Todas</option>
+          @for (choice of model.statusOptions; track choice) { <option [value]="choice">{{ choice }}</option> }
+        </select></label>
+      </header>
+      <cm-data-table [label]="model.name" [columns]="reportColumns()" [rows]="reportRows()" [minimumWidth]="700" [pageSize]="12" [pageSizes]="reportSizes" [totals]="reportSummary()" />
+    </section>
+  } @else if (path === '/app/crm/oportunidades') {
+    <header class="aurora-page-header">
+      <div><h1>Oportunidades</h1><p>Acompanhe as negociações e avance as oportunidades pelo funil comercial.</p></div>
+      <button cmButton type="button" tone="primary" (click)="open('new-opportunity')"><cm-icon name="plus" [size]="17" />Nova oportunidade</button>
+    </header>
+    <section class="aurora-card">
+      <header class="aurora-card-header"><div><h2 class="aurora-section-title">Funil de oportunidades</h2><p class="cm-text cm-text--sm cm-text--muted">{{ visibleDeals().length }} oportunidades</p></div></header>
+      <div class="aurora-filter-row">
+        <label class="aurora-native-field aurora-grow">Buscar oportunidades<input #queryField type="search" placeholder="Título, empresa ou responsável" [value]="query()" (input)="query.set(queryField.value)" /></label>
+        <label class="aurora-native-field">Responsável<select #owner [value]="status()" (change)="status.set(owner.value)">
+          <option value="">Todos</option>
+          @for (person of owners(); track person) { <option [value]="person">{{ person }}</option> }
+        </select></label>
+      </div>
+      <div class="aurora-kanban">
+        @for (stage of stageOptions; track stage.id) {
+          <section class="aurora-kanban-column">
+            <h3>{{ stage.label }} <span [class]="'cm-badge cm-badge--soft cm-badge--' + stage.tone">{{ deals(stage.id).length }}</span></h3>
+            @for (deal of deals(stage.id); track deal.id) {
+              <article class="aurora-card aurora-kanban-card">
+                <strong>{{ deal.title }}</strong>
+                <span class="cm-text cm-text--sm cm-text--muted">{{ company(deal) }}</span>
+                <strong>{{ crmCurrency(deal.value) }}</strong>
+                <small class="cm-text cm-text--muted">{{ deal.owner }} · {{ crmDate(deal.expectedAt) }}</small>
+                @if (stage.id !== 'won') {
+                  <button cmButton variant="outline" size="sm" type="button" [attr.aria-label]="(stage.id === 'negotiation' ? 'Fechar venda: ' : 'Avançar: ') + deal.title" (click)="advance(deal)">
+                    {{ stage.id === 'negotiation' ? 'Fechar venda' : 'Avançar' }}<cm-icon name="arrow-right" [size]="15" />
+                  </button>
+                }
+              </article>
+            } @empty { <p class="cm-text cm-text--sm cm-text--muted">Nenhuma oportunidade nesta etapa.</p> }
+          </section>
+        }
+      </div>
+    </section>
+  } @else if (path === '/app/servicos/agenda') {
+    <header class="aurora-page-header">
+      <div><h1>{{ schedule().title }}</h1><p>{{ schedule().description }}</p></div>
+      @if (nextService(); as service) { <button cmButton tone="primary" type="button" (click)="open('schedule',service.id)"><cm-icon name="calendar-plus" [size]="16" />Agendar visita</button> }
+    </header>
+    <section class="aurora-card">
+      <header class="aurora-card-header"><div><h2 class="aurora-section-title">{{ schedule().listTitle }}</h2><p class="cm-text cm-text--sm cm-text--muted">{{ schedule().listDescription }}</p></div>
+        <button cmButton variant="outline" type="button" size="sm" (click)="today()">Hoje</button></header>
+      <div class="aurora-filter-row">
+        <label class="aurora-native-field">Data da agenda<input #date type="date" [value]="day()" (change)="updateDay(date.value)" /></label>
+        <label class="aurora-native-field">Técnico<select #tech [value]="technician()" (change)="technician.set(tech.value)">
+          @for (item of schedule().technicianOptions; track item.value) { <option [value]="item.value">{{ item.label }}</option> }
+        </select></label>
+      </div>
+      <cm-data-table [rows]="scheduleRows()" [columns]="scheduleColumns()" label="Agenda técnica" [minimumWidth]="670" [pageSize]="0" emptyMessage="Nenhuma visita para esta data." (rowAction)="tableAction($event)" />
+    </section>
+  } @else if (path === '/app/financeiro/fluxo-de-caixa') {
+    <header class="aurora-page-header"><div><h1>{{ cashFlow().title }}</h1><p>{{ cashFlow().description }}</p></div>
+      <a cmButton variant="outline" [routerLink]="cashFlow().action.href">{{ cashFlow().action.label }}</a></header>
+    <section class="aurora-metrics" aria-label="Indicadores de fluxo de caixa">
+      @for (metric of cashFlow().metrics; track metric.title) {
+        <article class="aurora-metric" [attr.data-tone]="metric.tone">
+          <div class="aurora-metric-heading"><span>{{ metric.title }}</span><span class="aurora-metric-icon"><cm-icon [name]="metric.icon" /></span></div>
+          <strong class="aurora-metric-value">{{ metric.value }}</strong><p>{{ metric.description }}</p>
+        </article>
+      }
+    </section>
+    <div class="aurora-grid-two aurora-dashboard-charts">
+      <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:cashChart()}" />
+      <section class="aurora-card">
+        <header class="aurora-card-header"><h2 class="aurora-section-title">Detalhes da projeção</h2></header>
+        <div class="aurora-card-body cm-stack">
+          <label class="aurora-native-field">Horizonte da projeção<select #horizon [value]="projection()" (change)="setProjection(horizon.value)">
+            @for (option of horizonOptions; track option.value) { <option [value]="option.value">{{ option.label }}</option> }
+          </select></label>
+          @for (item of cashFlow().summary; track item.label) {
+            <div class="aurora-list-item" style="justify-content:space-between"><div>{{ item.label }} @if (item.detail) { <small class="cm-text cm-text--sm cm-text--muted">{{ item.detail }}</small> }</div><strong>{{ item.value }}</strong></div>
+          }
+        </div>
+      </section>
+    </div>
+    <section class="aurora-card">
+      <header class="aurora-card-header"><div><h2 class="aurora-section-title">Movimentação semanal</h2><p class="cm-text cm-text--muted">Valores previstos pela data de vencimento.</p></div></header>
+      <cm-data-table [rows]="financeRows()" [columns]="financeColumns()" [minimumWidth]="600" label="Movimentação semanal" />
+    </section>
+  }
+</div>
+
+@if (editor(); as modal) {
+  <dialog #editorDialog class="aurora-dialog" aria-labelledby="aurora-editor-title" (cancel)="$event.preventDefault();closeEditor()">
+    <header class="aurora-card-header"><div><h2 id="aurora-editor-title" class="aurora-section-title">{{ modal.title }}</h2>
+      @if (modal.description) { <p class="cm-text cm-text--sm cm-text--muted">{{ modal.description }}</p> }
+    </div><button cmButton variant="ghost" iconOnly type="button" aria-label="Fechar" (click)="closeEditor()"><cm-icon name="x" /></button></header>
+    <form cmForm class="aurora-card-body" (submit)="save($event,modal)" novalidate>
+      <div cmFormBody>
+        @for (field of modal.fields; track field.name) {
+          @if (field.options; as options) {
+            <cm-native-select [label]="field.label" [name]="field.name" [options]="options" [value]="field.value?.toString() ?? ''"
+              [required]="field.required !== false" [placeholder]="!field.value || field.required === false ? 'Selecione' : ''" />
+          } @else {
+            <cm-native-input [label]="field.label" [name]="field.name" [type]="field.type ?? 'text'" [value]="field.value?.toString() ?? ''"
+              [min]="field.min" [step]="field.step" [required]="field.required !== false" />
+          }
+        }
+        <div class="aurora-page-actions" style="justify-content:end">
+          <button cmButton variant="outline" type="button" (click)="closeEditor()">Cancelar</button>
+          <button cmButton tone="primary" type="submit">{{ modal.kind === 'edit-client' ? 'Salvar cliente' : modal.kind === 'adjust-stock' ? 'Registrar ajuste' : modal.kind === 'settle-entry' ? 'Confirmar' : modal.kind === 'schedule' ? 'Salvar agendamento' : 'Salvar' }}</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+}

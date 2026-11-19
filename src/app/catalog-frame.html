@@ -1,0 +1,161 @@
+@switch (name()) {
+  @case ('CmAuthLayout') {
+    <cm-auth-layout title="Área de demonstração" brand="Aurora Ops" appearance="glass"
+      [layout]="advanced() ? 'split' : 'centered'" [backgroundImage]="advanced() ? '' : art().background" [artworkImage]="advanced() ? art().artwork : ''">
+      <form class="cm-form cm-form--plain cm-stack" (submit)="validate($event)">
+        <cm-auth-field type="email" label="E-mail" name="email" autocomplete="email" required />
+        <button cmButton tone="primary" fullWidth type="submit">Validar exemplo</button>
+      </form>
+    </cm-auth-layout>
+  }
+  @case ('CmPageHeader') {
+    <header class="cm-page-header cm-page-header--align-start" [class.cm-page-header--wrap]="advanced()">
+      @if (advanced()) { <div class="cm-page-header__icon"><cm-icon name="calendar-days" /></div> }
+      <div class="cm-page-header__content">
+        <h1 class="cm-page-header__title">{{ advanced() ? 'Agenda de entregas' : 'Expedição' }}</h1>
+        <p class="cm-page-header__description">{{ !advanced() ? 'Acompanhe as remessas em trânsito.' : period() === 'semana' ? '26 entregas distribuídas em sete dias.' : '6 entregas previstas para hoje.' }}</p>
+      </div>
+      @if (advanced()) {
+        <label class="aurora-native-field cm-page-header__actions">Período da agenda
+          <select #select [value]="period()" (change)="period.set(select.value)"><option value="semana">Esta semana</option><option value="dia">Hoje</option></select>
+        </label>
+      }
+    </header>
+  }
+  @case ('CmAppShell') {
+    @if (advanced()) {
+      <section class="cm-stack cm-layout-box cm-layout-surface-card" style="min-height:330px;--cm-layout-gap:var(--space-md);--cm-layout-padding:var(--space-sm)">
+        <header class="preview-header">
+          <div class="cm-row" data-align="center" style="--cm-layout-gap:var(--space-sm)">
+            <button cmButton type="button" variant="ghost" size="sm" aria-label="Abrir etapas da expedição" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())"><cm-icon name="menu" /></button>
+            <strong>Depósito central</strong>
+          </div>
+          <span class="cm-badge cm-badge--soft cm-badge--tone-default cm-badge--md">Turno 1</span>
+        </header>
+        <ng-container [ngTemplateOutlet]="dispatch" />
+      </section>
+    } @else {
+      <section class="cm-stack cm-layout-box cm-layout-surface-card" style="min-height:170px;--cm-layout-gap:var(--space-md);--cm-layout-padding:var(--space-md)">
+        <header class="cm-topbar"><h2 class="cm-topbar__title">Área de retirada</h2></header>
+        <p class="cm-text cm-text--sm">Dois pedidos aguardam retirada no balcão.</p>
+      </section>
+    }
+  }
+  @case ('CmSidebar') { <ng-container [ngTemplateOutlet]="dispatch" /> }
+  @case ('CmTopbar') {
+    <section class="cm-stack" style="--cm-layout-gap:var(--space-md)">
+      <header class="cm-topbar preview-header cm-layout-box cm-layout-surface-card" style="--cm-layout-padding:var(--space-md)">
+        <strong>{{ advanced() ? 'Expedição' : 'Estoque' }}</strong>
+        @if (advanced()) {
+          <label class="aurora-native-field">Buscar etapa <input #search type="search" [value]="query()" (input)="query.set(search.value)" /></label>
+        }
+        <span class="cm-badge cm-badge--soft cm-badge--md" [class.cm-badge--tone-success]="advanced()">{{ advanced() ? 'Em operação' : 'Recife' }}</span>
+      </header>
+      @if (advanced()) {
+        @for (area of visibleStages(); track area.id) {
+          <div class="cm-stack" style="--cm-layout-gap:var(--space-xs)"><strong>{{ area.label }}</strong><p class="cm-text cm-text--sm cm-text--muted">{{ area.description }}</p></div>
+        } @empty { <p class="cm-text cm-text--sm" role="status">Nenhuma etapa para esta busca.</p> }
+      }
+    </section>
+  }
+  @case ('CmThemeMenu') {
+    @if (advanced()) { <ng-container [ngTemplateOutlet]="palette" /> }
+    @else { <ng-container [ngTemplateOutlet]="themeMenu" /> }
+  }
+  @case ('CmThemeToggle') {
+    @if (advanced()) { <ng-container [ngTemplateOutlet]="palette" /> }
+    @else { <ng-container [ngTemplateOutlet]="themeMenu" /> }
+  }
+  @case ('CmThemeProvider') {
+    @if (advanced()) {
+      <div class="cm-stack" style="--cm-layout-gap:var(--space-md)">
+        <label class="aurora-native-field">Densidade da prévia <select #select [value]="currentDensity()" (change)="density.set(select.value)">
+          <option value="default">Padrão</option><option value="compact">Compacta</option><option value="comfortable">Confortável</option>
+        </select></label>
+        <ng-container [ngTemplateOutlet]="palette" />
+      </div>
+    } @else { <ng-container [ngTemplateOutlet]="delivery" /> }
+  }
+  @case ('CmThemeScope') {
+    @if (advanced()) {
+      <div class="palette-grid">
+        <section class="cm-theme-scope cm-stack cm-layout-box cm-layout-surface-default" data-theme="cm-v4-light" data-density="compact" style="--cm-layout-padding:var(--space-sm)">
+          <strong>Claro</strong><ng-container [ngTemplateOutlet]="delivery" />
+        </section>
+        <section class="cm-theme-scope cm-stack cm-layout-box cm-layout-surface-default" data-theme="cm-v4-dark" data-density="compact" style="--cm-layout-padding:var(--space-sm)">
+          <strong>Escuro</strong><ng-container [ngTemplateOutlet]="delivery" />
+        </section>
+      </div>
+    } @else { <div class="cm-theme-scope" data-theme="cm-v4-dark"><ng-container [ngTemplateOutlet]="delivery" /></div> }
+  }
+  @case ('CmThemeScript') {
+    <div class="cm-stack" style="--cm-layout-gap:var(--space-sm)">
+      @if (advanced()) {
+        <label class="aurora-native-field">Tema inicial do documento <select #select [value]="initialTheme()" (change)="updateInitialTheme(select.value)">
+          @for (item of palettes; track item.id) { <option [value]="item.id">{{ item.label }}</option> }
+        </select></label>
+      }
+      <figure class="cm-code-block">
+        <figcaption class="cm-code-block__header"><span class="cm-code-block__filename">Documento.html</span></figcaption>
+        <pre class="cm-code-block__pre" tabindex="0"><code>{{ initializationScript() }}</code></pre>
+      </figure>
+      <iframe class="cm-frame cm-frame--framed" style="--cm-frame-height:103px" sandbox="allow-scripts"
+        title="Atributos do documento antes da hidratação" [attr.srcdoc]="initializationDocument()"></iframe>
+    </div>
+  }
+  @default { <p class="cm-text cm-text--sm">Exemplo não encontrado</p> }
+}
+
+<ng-template #dispatch>
+  <section class="dispatch-shell">
+    <div class="dispatch-shell__navigation cm-stack" style="--cm-layout-gap:var(--space-sm)">
+      <button cmButton type="button" variant="ghost" aria-label="Abrir etapas" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())">
+        <cm-icon name="package" [size]="18" />Expedição
+      </button>
+      @if (expanded()) {
+        <nav aria-label="Etapas da expedição" class="cm-stack" style="--cm-layout-gap:var(--space-xs)">
+          <span class="cm-text cm-text--xs cm-text--muted">Etapas</span>
+          @for (area of stages; track area.id) {
+            <button cmButton type="button" [variant]="selected() === area.id ? 'soft' : 'ghost'" [attr.aria-current]="selected() === area.id ? 'true' : null" (click)="selected.set(area.id)">
+              @if (advanced()) { <cm-icon [name]="area.icon" [size]="16" /> }{{ area.label }}
+            </button>
+          }
+        </nav>
+        @if (advanced()) { <p class="cm-text cm-text--sm cm-text--muted">Depósito central</p> }
+      }
+    </div>
+    <div class="cm-layout-box cm-layout-surface-muted cm-layout-radius-md" style="--cm-layout-padding:var(--space-md)">
+      <h3 class="cm-section-header__title">{{ stage().label }}</h3>
+      <p class="cm-text cm-text--sm cm-text--muted">{{ stage().description }}</p>
+    </div>
+  </section>
+</ng-template>
+
+<ng-template #delivery>
+  <article class="cm-card cm-card--soft cm-card--tone-primary cm-card--padding-md" style="padding:var(--space-md)">
+    <div class="preview-header"><div><strong>Entrega E-142</strong><p class="cm-text cm-text--sm cm-text--muted">Depósito central · Fortaleza</p></div>
+      <span class="cm-badge cm-badge--soft cm-badge--tone-success cm-badge--md">Recebida</span>
+    </div>
+  </article>
+</ng-template>
+
+<ng-template #themeMenu>
+  <div class="cm-dropdown-menu" (keydown.escape)="menuOpen.set(false)">
+    <button cmButton type="button" variant="ghost" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="'Tema atual: ' + themeLabel()" (click)="menuOpen.set(!menuOpen())"><cm-icon name="palette" />{{ themeLabel() }}</button>
+    @if (menuOpen()) {
+      <div class="cm-dropdown-menu__menu cm-dropdown-menu__menu--start" role="menu" aria-label="Temas">
+        @for (item of palettes; track item.id) {
+          <button type="button" class="cm-dropdown-menu__item" role="menuitem" (click)="changeLocalTheme(item.id)"><cm-icon [name]="item.icon" />{{ item.label }}</button>
+        }
+      </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #palette>
+  <div class="cm-stack" style="--cm-layout-gap:var(--space-md)">
+    <div class="preview-header"><strong>Tema {{ themeLabel() }}</strong><ng-container [ngTemplateOutlet]="themeMenu" /></div>
+    <ng-container [ngTemplateOutlet]="delivery" />
+  </div>
+</ng-template>

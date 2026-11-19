@@ -1,0 +1,81 @@
+<div class="cm-app-shell cm-app-shell--chrome-surface cm-app-shell--backdrop-plain" data-cm-chrome="surface"
+  [class.cm-app-shell--mobile-open]="drawer()" style="--cm-app-shell-content-padding:0">
+  <a class="cm-app-shell__skip-link" href="#aurora-content">Ir para o conteúdo</a>
+  <aside class="cm-app-shell__sidebar" [attr.inert]="drawer() ? '' : null">
+    <cm-sidebar [groups]="groups()" [path]="path()" [label]="inCatalog() ? 'Menu de componentes' : 'Menu principal'" footer="Workspace de demonstração" />
+  </aside>
+  <div class="cm-app-shell__mobile-layer" [attr.aria-hidden]="!drawer()" [attr.inert]="drawer() ? null : ''">
+    <button class="cm-app-shell__mobile-backdrop" type="button" aria-label="Fechar menu" (click)="closeDrawer()"></button>
+    <aside #drawerPanel id="aurora-mobile-sidebar" class="cm-app-shell__mobile-drawer" role="dialog" [attr.aria-modal]="drawer() || null" aria-label="Menu" tabindex="-1">
+      <button type="button" class="cm-app-shell__mobile-close" aria-label="Fechar menu" (click)="closeDrawer()"><cm-icon name="x" /></button>
+      <cm-sidebar mobile [groups]="groups()" [path]="path()" [label]="inCatalog() ? 'Menu de componentes' : 'Menu principal'" footer="Workspace de demonstração" (selected)="closeDrawer()" />
+    </aside>
+  </div>
+  <div class="cm-app-shell__main" [attr.inert]="drawer() ? '' : null">
+    <div class="cm-app-shell__topbar">
+      <header class="cm-topbar cm-topbar--tone-surface cm-topbar--layout-search cm-topbar--mobile-inline cm-topbar--bordered">
+        <div class="cm-topbar__section cm-topbar__section--start">
+          <button #drawerButton type="button" class="cm-app-shell__mobile-menu-button" aria-label="Abrir menu" [attr.aria-expanded]="drawer()"
+            aria-controls="aurora-mobile-sidebar" (click)="showDrawer()"><cm-icon name="menu" /></button>
+          <nav class="cm-breadcrumb" aria-label="breadcrumb">
+              <span class="cm-breadcrumb__item">
+                <a class="cm-breadcrumb__link" [routerLink]="crumb().root">
+                  <span class="cm-row" data-align="center" style="--cm-layout-gap:var(--space-xs)"><cm-icon [name]="crumb().icon" [size]="16" />{{ crumb().group }}</span>
+                </a>
+                <span class="cm-breadcrumb__separator" aria-hidden="true">/</span>
+              </span>
+              @if (crumb().category; as category) {
+                <span class="cm-breadcrumb__item"><a class="cm-breadcrumb__link" [routerLink]="crumb().categoryPath">{{ category }}</a>
+                  <span class="cm-breadcrumb__separator" aria-hidden="true">/</span></span>
+              }
+              <span class="cm-breadcrumb__item"><span class="cm-breadcrumb__current" aria-current="page">{{ crumb().title }}</span></span>
+          </nav>
+        </div>
+        <div class="cm-topbar__section cm-topbar__section--center">
+          <div class="aurora-search" (focusout)="closeSearchOnBlur($event)">
+            <cm-icon name="search" />
+            <input #searchInput type="search" autocomplete="off" placeholder="Buscar páginas" aria-label="Buscar páginas"
+              [value]="query()" (focus)="searchOpen.set(true)" (input)="search(searchInput.value)" (keydown)="searchKey($event)"
+              [attr.aria-expanded]="searchOpen() && !!query()" role="combobox" aria-controls="aurora-search-results" />
+            <kbd aria-hidden="true">{{ searchShortcut }}</kbd>
+            @if (searchOpen() && query()) {
+              <div class="aurora-search-results" id="aurora-search-results" role="listbox" aria-label="Páginas">
+                @for (item of searchItems(); track item.path; let index = $index) {
+                  <a [routerLink]="item.path" (click)="finishSearch()" [class.aurora-search-selected]="index === selection()" role="option" [attr.aria-selected]="index === selection()">
+                    <cm-icon [name]="item.icon ?? 'file-text'" />
+                    <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
+                  </a>
+                } @empty { <p class="cm-text cm-text--sm cm-text--muted" style="padding:.75rem">Nenhuma página encontrada.</p> }
+              </div>
+            }
+          </div>
+        </div>
+        <div class="cm-topbar__section cm-topbar__section--end">
+          <div class="cm-row" data-align="center" style="--cm-layout-gap:clamp(var(--space-xs),1cqi,var(--space-lg))">
+            <cm-theme-menu />
+            <a cmButton variant="ghost" iconOnly [routerLink]="['/app/dashboard']" fragment="atividade" aria-label="Ver atividade recente"><cm-icon name="bell" [size]="17" /></a>
+            <span class="aurora-toolbar-divider" aria-hidden="true"></span>
+            @if (auth.user(); as user) {
+              <div class="cm-user-menu cm-user-menu--slim" style="position:relative">
+                <button #profileButton cmButton variant="ghost" type="button" aria-label="Menu do usuário" [attr.aria-expanded]="profile()" aria-haspopup="menu" (click)="profile.set(!profile())">
+                  <span class="aurora-avatar">{{ initials(user.name) }}</span><span class="aurora-profile-name">{{ user.name }}</span><cm-icon name="chevron-down" [size]="14" />
+                </button>
+                @if (profile()) {
+                  <div class="aurora-user-popup" role="menu" aria-label="Menu do usuário">
+                    <div class="cm-stack" style="--cm-layout-gap:.125rem;padding:.625rem"><strong>{{ user.name }}</strong><span class="cm-text cm-text--sm cm-text--muted">{{ user.email ?? user.username }}</span></div>
+                    <a [routerLink]="['/app/servicos/agenda']" role="menuitem" (click)="profile.set(false)"><cm-icon name="calendar-days" [size]="16" />Agenda da equipe</a>
+                    <a [routerLink]="['/app/dashboard']" fragment="atividade" role="menuitem" (click)="profile.set(false)"><cm-icon name="activity" [size]="16" />Atividade recente</a>
+                    <button type="button" role="menuitem" (click)="logout()"><cm-icon name="arrow-right" [size]="16" /> Sair</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </header>
+    </div>
+    <main id="aurora-content" tabindex="-1" class="cm-app-shell__content">
+      <div class="aurora-content-container"><router-outlet /></div>
+    </main>
+  </div>
+</div>

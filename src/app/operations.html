@@ -1,0 +1,67 @@
+<section cmStack gap="md" aria-label="Operações">
+  <header cmSectionHeader title="Operações"></header>
+  <div cmGridContainer [columns]="{base:1,lg:2}">
+    <section id="vendas" cmCard [header]="salesHeader">
+      <cm-bar-chart orientation="horizontal" barThickness="sm" [data]="pipeline" [legend]="true"
+        accessibleTableLabel="Quantidade de oportunidades por etapa do pipeline" />
+    </section>
+    <ng-template #salesHeader>
+      <header cmSectionHeader title="Pipeline de vendas" description="Oportunidades por etapa" [headingLevel]="3" [icon]="salesIcon"></header>
+    </ng-template>
+    <ng-template #salesIcon><cm-icon name="target" [size]="18" /></ng-template>
+
+    <section id="suporte" cmCard [header]="supportHeader" [footer]="supportFooter">
+      <div cmStack gap="md">
+        <cm-ratio-bar aria-hidden="true" [segments]="support" [height]="10" />
+        <cm-summary-list [items]="supportSummary" [divided]="false" />
+      </div>
+    </section>
+    <ng-template #supportHeader>
+      <header cmSectionHeader title="Central de suporte" description="Situação dos chamados" [headingLevel]="3" [icon]="supportIcon"></header>
+    </ng-template>
+    <ng-template #supportIcon><cm-icon name="headphones" [size]="18" /></ng-template>
+    <ng-template #supportFooter>
+      <div cmRow fullWidth align="center" justify="between" gap="sm" wrap>
+        <div cmRow align="center" gap="xs"><cm-icon name="clock-3" [size]="14" /><span cmText size="xs">Tempo médio de primeira resposta</span></div>
+        <span cmText weight="bold">{{ time }}</span>
+      </div>
+    </ng-template>
+
+    @for (panel of panels; track panel.id) {
+      <section cmCard [id]="panel.id" [header]="panelHeading">
+        <div cmStack gap="md" role="list">
+          @for (item of panel.items; track item.title) {
+            <div cmRow gap="sm" align="center" role="listitem">
+              @if ('initials' in item) { <cm-avatar size="sm" [fallback]="item.initials" aria-hidden="true" /> }
+              @else if ('icon' in item) { <span cmIconBadge size="sm" aria-hidden="true"><cm-icon [name]="item.icon" [size]="16" /></span> }
+              <div cmStack grow [minWidth]="0" gap="xs">
+                <cm-progress [label]="item.title" [value]="item.progress" showValue />
+                <p cmText size="xs" tone="muted">{{ item.detail }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+      <ng-template #panelHeading>
+        <header cmSectionHeader [title]="panel.title" [description]="panel.description" [headingLevel]="3" [icon]="panelIcon"></header>
+      </ng-template>
+      <ng-template #panelIcon><cm-icon [name]="panel.icon" [size]="18" /></ng-template>
+    }
+  </div>
+  <div class="cm-grid-container cm-grid-container--template" style="--grid-template-columns-base:minmax(0,1fr);--grid-template-columns-sm:minmax(0,1fr);--grid-template-columns-md:minmax(0,1fr);--grid-template-columns-lg:minmax(0,1fr);--grid-template-columns-xl:minmax(0,1.6fr) minmax(0,1fr)">
+    <section id="pedidos" cmCard [header]="ordersHeading" role="region" aria-label="Pedidos recentes">
+      <cm-data-table [columns]="columns" [rows]="rows" [pageSize]="0" [minimumWidth]="500" label="Pedidos recentes" />
+    </section>
+    <ng-template #ordersHeading><header cmSectionHeader title="Pedidos recentes" description="Últimas transações registradas" [headingLevel]="3"></header></ng-template>
+    <section id="atividade" cmCard [header]="activityHeading"><cm-timeline [items]="activity" [labelWidth]="44" /></section>
+    <ng-template #activityHeading><header cmSectionHeader title="Atividade recente" [description]="date" [headingLevel]="3" [icon]="activityIcon"></header></ng-template>
+    <ng-template #activityIcon><cm-icon name="clock-3" [size]="18" /></ng-template>
+  </div>
+  <div cmMetricGrid label="Indicadores complementares">
+    @for (metric of metrics; track metric.title) {
+      <cm-metric-card [title]="metric.title" [description]="metric.description" [value]="metric.value" [tone]="metric.tone" showIcon>
+        <cm-icon cmMetricIcon [name]="metric.icon" [size]="16" />
+      </cm-metric-card>
+    }
+  </div>
+</section>

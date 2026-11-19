@@ -1,0 +1,136 @@
+@if (isolated) {
+  @if (item && frameMode && validFrame) {
+    <aurora-catalog-frame [name]="item.name" [mode]="frameMode" [theme]="frameTheme" />
+  } @else { <h3 class="cm-empty__title">Exemplo não encontrado</h3> }
+} @else {
+<div class="aurora-page">
+  @if (item; as example) {
+    @if (!isolated) {
+      <header class="aurora-page-header">
+        <div><h1>{{ example.label }}</h1><p>{{ example.description }}</p></div>
+        @if (example.name !== 'CmAuthLayout') {
+          <a cmButton variant="outline" [href]="'https://miltonjunior.dev.br/cosmemilton-ui/v4/components/'+example.slug" target="_blank" rel="noreferrer">Documentação da API <cm-icon name="arrow-up-right" [size]="16" /></a>
+        }
+      </header>
+      <code class="cm-text cm-text--muted">{{ example.name }}</code>
+    }
+    <div class="example-grid">
+    @for (section of sections; track section.title;let index = $index) {
+        <section class="aurora-card" [class.example-grid__wide]="section.frame && example.category.id === 'estrutura' && example.name !== 'CmAuthLayout'">
+          <header class="aurora-card-header">
+            <div><h2 class="aurora-section-title">{{ section.title }}</h2>
+              @if (section.description) { <p class="cm-text cm-text--sm cm-text--muted">{{ section.description }}</p> }
+            </div>
+          </header>
+          <div class="aurora-card-body">
+            <div class="aurora-demo">
+              @if (section.frame; as frame) {
+                <iframe class="cm-frame cm-frame--framed" [src]="frameSources()?.[frame]"
+                  [attr.title]="example.name + ' · ' + (frame === 'basic' ? 'Básico' : 'Em uso')"></iframe>
+              } @else { @switch (example.name) {
+                @case ('CmButton') {
+                  <div class="cm-row cm-layout-wrap">
+                    <button cmButton tone="primary" type="button" (click)="announce('Ação principal selecionada.')">Ação principal</button>
+                    <button cmButton variant="outline" type="button" (click)="announce('Alterações salvas.')">Salvar alterações</button>
+                    <button cmButton variant="ghost" type="button" (click)="selected.set('Ação cancelada')">Cancelar</button>
+                  </div>
+                  @if (selected()) { <p class="cm-text cm-text--sm cm-text--muted" role="status">{{ selected() }}</p> }
+                }
+                @case ('CmDataTable') {
+                  <cm-data-table [columns]="columns" [rows]="dataRows" [pageSize]="5" [minimumWidth]="550" label="Clientes do exemplo" />
+                }
+                @case ('CmAuthLayout') {
+                  <div class="cm-row cm-layout-wrap">
+                    <a cmButton tone="primary" routerLink="/app/login-v1">LoginV1</a>
+                    <a cmButton variant="outline" routerLink="/app/login-v2">LoginV2</a>
+                  </div>
+                }
+                @case ('CmToastNotice') {
+                  <button cmButton tone="primary" type="button" (click)="announce()">Mostrar notificação</button>
+                }
+                @case ('CmToastProvider') {
+                  <button cmButton tone="primary" type="button" (click)="announce()">Mostrar notificação</button>
+                }
+                @case ('CmAlert') {
+                  <button cmButton tone="primary" type="button" (click)="announce()">Mostrar notificação</button>
+                }
+                @case ('CmAlertDialog') {
+                  <button cmButton tone="primary" type="button" (click)="announce('Operação confirmada.')">Confirmar operação</button>
+                }
+                @case ('CmThemeProvider') {
+                  <div class="cm-row" data-align="center"><cm-theme-menu /> Escolher tema</div>
+                }
+                @default {
+                  @if (trees[index]?.length) {
+                    <aurora-fixture-tree [nodes]="trees[index] ?? []" />
+                  } @else {
+                    <p class="cm-text cm-text--muted">{{ example.description }}</p>
+                    <span class="cm-text cm-text--sm cm-text--muted">Este exemplo depende da API React da biblioteca de referência.</span>
+                  }
+                }
+              } }
+            </div>
+            <details class="aurora-demo-source">
+              <summary>Ver código do exemplo</summary>
+              @if (trees[index]?.length) {
+                <div class="aurora-filter-row"><button cmButton variant="outline" size="sm" type="button" (click)="copy(code(trees[index],example.name))">Copiar</button></div>
+                <pre><code>{{ code(trees[index],example.name) }}</code></pre>
+              } @else if (examples?.source) {
+                <p class="cm-text cm-text--sm cm-text--muted">{{ examples?.source }}</p>
+              }
+            </details>
+          </div>
+        </section>
+    }
+    </div>
+    @if (!isolated) { <a class="aurora-doc-link" [routerLink]="example.categoryPath">Voltar para {{ example.category.label.toLowerCase() }}</a> }
+  } @else if (isolated) {
+    <p class="aurora-empty">Exemplo não encontrado.</p>
+  } @else {
+    <header class="aurora-page-header">
+      <div><h1>{{ match?.label ?? 'Catálogo de componentes' }}</h1>
+        <p>{{ match?.description ?? ('Explore os ' + total + ' componentes da cm-ui com exemplos do Aurora Ops.') }}</p>
+      </div>
+      @if (match) { <a cmButton variant="outline" [routerLink]="root">Todas as categorias</a> }
+    </header>
+    <label class="aurora-native-field">Buscar componentes<input #search type="search" [value]="query()" placeholder="Nome ou API do componente" (input)="query.set(search.value)" /></label>
+    @if (!match && !query().trim()) {
+      <div class="aurora-catalog-grid">
+        @for (group of categories; track group.id) {
+          <article class="aurora-card">
+            <header class="aurora-card-header">
+              <div class="cm-row" data-align="center">
+                <span class="aurora-metric-icon" [attr.data-tone]="group.tone"><cm-icon [name]="group.icon" /></span>
+                <div><h2 class="aurora-section-title">{{ group.label }}</h2><p class="cm-text cm-text--sm cm-text--muted">{{ categoryEntries(group.id).length }} componentes</p></div>
+              </div>
+            </header>
+            <div class="aurora-card-body cm-stack">
+              <p class="cm-text cm-text--sm cm-text--muted">{{ group.description }}</p>
+              <details>
+                <summary>Ver componentes</summary>
+                <div class="cm-stack" style="--cm-layout-gap:.3rem;padding-block:.4rem">
+                  @for (entry of categoryEntries(group.id); track entry.path) {
+                    <a class="aurora-doc-link" [routerLink]="entry.path">{{ entry.label }}</a>
+                  }
+                </div>
+              </details>
+              <a [routerLink]="root+'/'+group.id" class="aurora-doc-link">Ver categoria {{ group.label.toLowerCase() }}</a>
+            </div>
+          </article>
+        }
+      </div>
+    } @else {
+      <p class="cm-text cm-text--sm cm-text--muted" role="status">{{ results().length }} {{ results().length === 1 ? 'componente encontrado' : 'componentes encontrados' }}</p>
+      <div class="aurora-catalog-grid">
+        @for (entry of results(); track entry.path) {
+          <article class="aurora-card aurora-card-body cm-stack" style="--cm-layout-gap:.5rem">
+            <h2 class="aurora-section-title"><a class="aurora-doc-link" [routerLink]="entry.path">{{ entry.label }}</a></h2>
+            <code class="cm-text cm-text--sm">{{ entry.name }}</code>
+            <p class="cm-text cm-text--sm cm-text--muted">{{ entry.description }}</p>
+          </article>
+        } @empty { <p class="aurora-empty">Nenhum componente encontrado.</p> }
+      </div>
+    }
+  }
+</div>
+}
