@@ -30,7 +30,7 @@
             <button cmButton type="button" variant="ghost" size="sm" aria-label="Abrir etapas da expedição" [attr.aria-expanded]="expanded()" (click)="expanded.set(!expanded())"><cm-icon name="menu" /></button>
             <strong>Depósito central</strong>
           </div>
-          <span class="cm-badge cm-badge--soft cm-badge--tone-default cm-badge--md">Turno 1</span>
+          <span cmBadge>Turno 1</span>
         </header>
         <ng-container [ngTemplateOutlet]="dispatch" />
       </section>
@@ -49,7 +49,7 @@
         @if (advanced()) {
           <label class="aurora-native-field">Buscar etapa <input #search type="search" [value]="query()" (input)="query.set(search.value)" /></label>
         }
-        <span class="cm-badge cm-badge--soft cm-badge--md" [class.cm-badge--tone-success]="advanced()">{{ advanced() ? 'Em operação' : 'Recife' }}</span>
+        <span cmBadge [tone]="advanced() ? 'success' : 'default'">{{ advanced() ? 'Em operação' : 'Recife' }}</span>
       </header>
       @if (advanced()) {
         @for (area of visibleStages(); track area.id) {
@@ -134,7 +134,7 @@
 <ng-template #delivery>
   <article class="cm-card cm-card--soft cm-card--tone-primary cm-card--padding-md" style="padding:var(--space-md)">
     <div class="preview-header"><div><strong>Entrega E-142</strong><p class="cm-text cm-text--sm cm-text--muted">Depósito central · Fortaleza</p></div>
-      <span class="cm-badge cm-badge--soft cm-badge--tone-success cm-badge--md">Recebida</span>
+      <span cmBadge tone="success">Recebida</span>
     </div>
   </article>
 </ng-template>

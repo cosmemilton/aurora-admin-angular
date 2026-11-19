@@ -1,7 +1,7 @@
 import { DOCUMENT, NgTemplateOutlet } from '@angular/common'
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core'
 import { DomSanitizer } from '@angular/platform-browser'
-import { CmAuthField, CmAuthLayout, CmButton, CmIcon, CmThemeScript, CmToastService, cmThemes, type CmThemeName } from '@cosmemilton/ui-angular'
+import { CmAuthField, CmAuthLayout, CmBadge, CmButton, CmIcon, CmThemeScript, CmToastService, cmThemes, type CmThemeName } from '@cosmemilton/ui-angular'
 import { authArtwork } from './auth-artwork'
 import { normalizeSearch } from './navigation'
 
@@ -17,7 +17,7 @@ export function previewTheme(value: unknown): CmThemeName {
 
 @Component({
   selector: 'aurora-catalog-frame',
-  imports: [CmAuthLayout, CmAuthField, CmButton, CmIcon, NgTemplateOutlet],
+  imports: [CmAuthLayout, CmAuthField, CmBadge, CmButton, CmIcon, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { style: 'display:block;min-width:0' },
   templateUrl: './catalog-frame.html',
