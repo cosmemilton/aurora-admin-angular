@@ -19,9 +19,11 @@
             aria-controls="aurora-mobile-sidebar" (click)="showDrawer()"><cm-icon name="menu" /></button>
           <nav class="cm-breadcrumb" aria-label="breadcrumb">
               <span class="cm-breadcrumb__item">
-                <a class="cm-breadcrumb__link" [routerLink]="crumb().root">
+                @if (crumb().root === path()) {
                   <span class="cm-row" data-align="center" style="--cm-layout-gap:var(--space-xs)"><cm-icon [name]="crumb().icon" [size]="16" />{{ crumb().group }}</span>
-                </a>
+                } @else {
+                  <a class="cm-breadcrumb__link" [routerLink]="crumb().root"><span class="cm-row" data-align="center" style="--cm-layout-gap:var(--space-xs)"><cm-icon [name]="crumb().icon" [size]="16" />{{ crumb().group }}</span></a>
+                }
                 <span class="cm-breadcrumb__separator" aria-hidden="true">/</span>
               </span>
               @if (crumb().category; as category) {
@@ -32,12 +34,12 @@
           </nav>
         </div>
         <div class="cm-topbar__section cm-topbar__section--center">
-          <div class="aurora-search" (focusout)="closeSearchOnBlur($event)">
-            <cm-icon name="search" />
-            <input #searchInput type="search" autocomplete="off" placeholder="Buscar páginas" aria-label="Buscar páginas"
+          <div class="cm-mega-search cm-mega-search--md" (focusout)="closeSearchOnBlur($event)">
+            <cm-icon name="search" class="cm-mega-search__icon" [size]="17" />
+            <input #searchInput class="cm-mega-search__input" type="search" autocomplete="off" spellcheck="false" placeholder="Buscar páginas" aria-label="Buscar páginas"
               [value]="query()" (focus)="searchOpen.set(true)" (input)="search(searchInput.value)" (keydown)="searchKey($event)"
               [attr.aria-expanded]="searchOpen() && !!query()" role="combobox" aria-controls="aurora-search-results" />
-            <kbd aria-hidden="true">{{ searchShortcut }}</kbd>
+            <kbd class="cm-mega-search__shortcut" aria-hidden="true">{{ searchShortcut }}</kbd>
             @if (searchOpen() && query()) {
               <div class="aurora-search-results" id="aurora-search-results" role="listbox" aria-label="Páginas">
                 @for (item of searchItems(); track item.path; let index = $index) {
@@ -53,12 +55,14 @@
         <div class="cm-topbar__section cm-topbar__section--end">
           <div class="cm-row" data-align="center" style="--cm-layout-gap:clamp(var(--space-xs),1cqi,var(--space-lg))">
             <cm-theme-menu />
-            <a cmButton variant="ghost" iconOnly [routerLink]="['/app/dashboard']" fragment="atividade" aria-label="Ver atividade recente"><cm-icon name="bell" [size]="17" /></a>
-            <span class="aurora-toolbar-divider" aria-hidden="true"></span>
+            <a class="cm-link cm-link--button cm-link--tone-default" [routerLink]="['/app/dashboard']" fragment="atividade" aria-label="Ver atividade recente"><cm-icon name="bell" [size]="17" /></a>
+            <span class="cm-separator cm-separator--vertical cm-separator--spacing-none" style="--cm-separator-length:1.5rem" aria-hidden="true"></span>
             @if (auth.user(); as user) {
               <div class="cm-user-menu cm-user-menu--slim" style="position:relative">
-                <button #profileButton cmButton variant="ghost" type="button" aria-label="Menu do usuário" [attr.aria-expanded]="profile()" aria-haspopup="menu" (click)="profile.set(!profile())">
-                  <span class="aurora-avatar">{{ initials(user.name) }}</span><span class="aurora-profile-name">{{ user.name }}</span><cm-icon name="chevron-down" [size]="14" />
+                <button #profileButton cmButton variant="plain" size="sm" type="button" class="cm-user-menu__trigger cm-user-menu__trigger--slim cm-user-menu__trigger--slim-avatar-auto" [attr.aria-label]="user.name + ', ' + user.username" [attr.aria-expanded]="profile()" aria-haspopup="menu" (click)="profile.set(!profile())">
+                  <span class="cm-avatar cm-avatar--sm">{{ initials(user.name) }}</span>
+                  <span class="cm-user-menu__trigger-text"><span class="cm-user-menu__trigger-title">{{ user.name }}</span><span class="cm-user-menu__trigger-subtitle">{{ user.username }}</span></span>
+                  <span class="cm-user-menu__trigger-chevron" aria-hidden="true"><cm-icon name="chevron-down" [size]="14" /></span>
                 </button>
                 @if (profile()) {
                   <div class="aurora-user-popup" role="menu" aria-label="Menu do usuário">

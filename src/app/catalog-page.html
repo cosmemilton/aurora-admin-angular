@@ -5,29 +5,22 @@
 } @else {
 <div class="aurora-page">
   @if (item; as example) {
-    @if (!isolated) {
-      <header class="aurora-page-header">
-        <div><h1>{{ example.label }}</h1><p>{{ example.description }}</p></div>
-        @if (example.name !== 'CmAuthLayout') {
-          <a cmButton variant="outline" [href]="'https://miltonjunior.dev.br/cosmemilton-ui/v4/components/'+example.slug" target="_blank" rel="noreferrer">Documentação da API <cm-icon name="arrow-up-right" [size]="16" /></a>
-        }
-      </header>
-      <code class="cm-text cm-text--muted">{{ example.name }}</code>
-    }
-    <div class="example-grid">
+    <ng-template #meta><span class="cm-text cm-text--sm cm-text--mono cm-text--muted">{{ example.name }}</span></ng-template>
+    <ng-template #docs><a class="cm-link cm-link--button cm-link--tone-default" [href]="'https://miltonjunior.dev.br/cosmemilton-ui/v4/components/'+example.slug" target="_blank" rel="noreferrer">Documentação da API ↗</a></ng-template>
+    <header cmPageHeader [title]="example.label" [description]="example.description" layout="wrap"
+      [meta]="meta" [actions]="example.name === 'CmAuthLayout' ? undefined : docs"></header>
+    <div cmGridContainer [columns]="{base:1,lg:2}" spacing="md">
     @for (section of sections; track section.title;let index = $index) {
-        <section class="aurora-card" [class.example-grid__wide]="section.frame && example.category.id === 'estrutura' && example.name !== 'CmAuthLayout'">
-          <header class="aurora-card-header">
-            <div><h2 class="aurora-section-title">{{ section.title }}</h2>
-              @if (section.description) { <p class="cm-text cm-text--sm cm-text--muted">{{ section.description }}</p> }
-            </div>
-          </header>
-          <div class="aurora-card-body">
-            <div class="aurora-demo">
+      <div cmGrid [span]="section.wide ? {base:1,lg:2} : 1">
+        <ng-template #panelHeader><header cmSectionHeader [title]="section.title" [description]="section.description"></header></ng-template>
+        <section cmCard [header]="panelHeader" role="region" [attr.aria-label]="section.title">
               @if (section.frame; as frame) {
-                <iframe class="cm-frame cm-frame--framed" [src]="frameSources()?.[frame]"
+                <iframe class="cm-frame cm-frame--framed" height="320" style="--cm-frame-height:320px" [src]="frameSources()?.[frame]"
                   [attr.title]="example.name + ' · ' + (frame === 'basic' ? 'Básico' : 'Em uso')"></iframe>
               } @else { @switch (example.name) {
+                @case ('CmMap') {
+                  <aurora-catalog-map [interactive]="index > 0" />
+                }
                 @case ('CmButton') {
                   <div class="cm-row cm-layout-wrap">
                     <button cmButton tone="primary" type="button" (click)="announce('Ação principal selecionada.')">Ação principal</button>
@@ -69,21 +62,24 @@
                   }
                 }
               } }
-            </div>
-            <details class="aurora-demo-source">
-              <summary>Ver código do exemplo</summary>
-              @if (trees[index]?.length) {
-                <div class="aurora-filter-row"><button cmButton variant="outline" size="sm" type="button" (click)="copy(code(trees[index],example.name))">Copiar</button></div>
-                <pre><code>{{ code(trees[index],example.name) }}</code></pre>
-              } @else if (examples?.source) {
-                <p class="cm-text cm-text--sm cm-text--muted">{{ examples?.source }}</p>
-              }
-            </details>
-          </div>
         </section>
+      </div>
     }
     </div>
-    @if (!isolated) { <a class="aurora-doc-link" [routerLink]="example.categoryPath">Voltar para {{ example.category.label.toLowerCase() }}</a> }
+    <cm-disclosure title="Ver código do exemplo" [(open)]="sourceOpen">
+      @if (sourceOpen()) {
+        <div class="aurora-demo-source">
+          @for (tree of trees; track $index) {
+            @if (tree?.length) {
+              <div class="aurora-filter-row"><strong>{{ sections[$index]?.title }}</strong><button cmButton variant="outline" size="sm" type="button" (click)="copy(code(tree,example.name))">Copiar</button></div>
+              <pre><code>{{ code(tree,example.name) }}</code></pre>
+            }
+          }
+          @if (examples?.source) { <p class="cm-text cm-text--sm cm-text--muted">{{ examples?.source }}</p> }
+        </div>
+      }
+    </cm-disclosure>
+    <a class="cm-link cm-link--tone-default" [routerLink]="example.categoryPath">Voltar para {{ example.category.label.toLowerCase() }}</a>
   } @else if (isolated) {
     <p class="aurora-empty">Exemplo não encontrado.</p>
   } @else {

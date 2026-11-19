@@ -119,7 +119,10 @@ export class AdminLayout {
     if (!current.contains(event.relatedTarget as Node | null)) this.searchOpen.set(false)
   }
 
-  initials(name: string) { return name.trim().split(/\s+/).slice(0,2).map(part => part[0]).join('').toUpperCase() }
+  initials(name: string) {
+    const words = name.trim().split(/\s+/)
+    return (words.length > 1 ? words[0][0] + words[words.length - 1][0] : words[0].slice(0, 2)).toUpperCase()
+  }
 
   logout() {
     try {

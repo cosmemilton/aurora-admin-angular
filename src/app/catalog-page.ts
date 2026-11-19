@@ -1,37 +1,34 @@
+import { Location } from '@angular/common'
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
 import { DomSanitizer } from '@angular/platform-browser'
 import { ActivatedRoute, RouterLink } from '@angular/router'
-import { CmButton, CmColumn, CmDataTable, CmIcon, CmTableRow, CmThemeMenu, CmThemeService, CmToastService } from '@cosmemilton/ui-angular'
+import { CmButton, CmCard, CmColumn, CmDataTable, CmDisclosure, CmGrid, CmGridContainer, CmPageHeader, CmSectionHeader, CmTableRow, CmThemeMenu, CmThemeService, CmToastService, CmIcon } from '@cosmemilton/ui-angular'
 import { CatalogFrame, previewTheme } from './catalog-frame'
+import { CatalogMapDemo } from './catalog-map-demo'
 import { catalog, categories, categoryRoot, normalizeSearch } from './navigation'
 import rawExamples from './reference/catalogExamples.json'
 import rawTrees from './reference/catalogTrees.json'
 import { FixtureChild, FixtureTree } from './fixture-tree'
+import { APP_PATHS } from './reference/paths'
 
 type FrameMode = 'basic' | 'advanced'
-type Section = {title:string;description?:string;frame?:FrameMode}
+type Section = {title:string;description?:string;frame?:FrameMode;wide?:boolean}
 const examples = rawExamples as Record<string,{ source:string; sections:Section[] }>
 const trees = rawTrees as unknown as Record<string,(FixtureChild[] | null)[]>
 
 @Component({
   selector:'aurora-catalog',
-  imports:[RouterLink,CmButton,CmDataTable,CmIcon,CmThemeMenu,FixtureTree,CatalogFrame],
+  imports:[RouterLink,CmButton,CmCard,CmDataTable,CmDisclosure,CmGrid,CmGridContainer,CmPageHeader,CmSectionHeader,CmIcon,CmThemeMenu,FixtureTree,CatalogFrame,CatalogMapDemo],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
-  styles: [`
-    .example-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-md); }
-    @media (min-width:64rem) {
-      .example-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
-      .example-grid__wide { grid-column:1/-1; }
-    }
-  `],
 })
 export class CatalogPage {
   readonly route = inject(ActivatedRoute)
   private readonly toast = inject(CmToastService)
   private readonly theme = inject(CmThemeService)
   private readonly sanitizer = inject(DomSanitizer)
+  private readonly location = inject(Location)
   readonly isolated = !!this.route.snapshot.data['isolated']
   readonly frameTheme = previewTheme(this.route.snapshot.queryParamMap.get('tema') ?? this.theme.name())
   readonly frameMode = this.parseMode(this.route.snapshot.paramMap.get('mode'))
@@ -47,15 +44,17 @@ export class CatalogPage {
   readonly examples = this.item ? examples[this.item.name] : undefined
   readonly trees = this.item ? trees[this.item.name] ?? [] : []
   readonly sections: Section[] = this.examples?.sections?.length ? this.examples.sections : [{title:this.item?.label ?? 'Exemplo'}]
+  readonly sourceOpen = signal(false)
   readonly validFrame = this.sections.some(section => section.frame === this.frameMode)
   readonly frameSources = computed(() => {
     if (!this.item) return null
     const { category, slug } = this.item
-    const prefix = '/app/exemplo-isolado/' + category.id + '/' + slug
+    const prefix = APP_PATHS.isolatedExample + '/' + category.id + '/' + slug
     const query = '?tema=' + encodeURIComponent(this.theme.name())
+    const source = (mode: FrameMode) => this.sanitizer.bypassSecurityTrustResourceUrl(this.location.prepareExternalUrl(prefix + '/' + mode + query))
     return {
-      basic: this.sanitizer.bypassSecurityTrustResourceUrl(prefix + '/basic' + query),
-      advanced: this.sanitizer.bypassSecurityTrustResourceUrl(prefix + '/advanced' + query),
+      basic: source('basic'),
+      advanced: source('advanced'),
     }
   })
   readonly results = computed(() => {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, forwardRef, input } from '@angular/
 import { RouterLink } from '@angular/router'
 import {
   CmAspectRatio, CmBadge, CmBox, CmButton, CmCard, CmCol, CmContainer,
-  CmEmpty, CmGrid, CmGridContainer, CmIcon, CmIconBadge, CmKbd, CmLink, CmMetricCard, CmMetricGrid,
+  CmEmpty, CmGrid, CmGridContainer, CmIcon, CmIconBadge, CmItem, CmKbd, CmLink, CmMetricCard, CmMetricGrid,
   CmProgress, CmRow, CmSeparator, CmSkeleton, CmStack, CmStatusDot, CmText, type CmButtonVariant, type CmTone,
 } from '@cosmemilton/ui-angular'
 
@@ -15,7 +15,7 @@ type ResponsiveCount = number | Partial<Record<'base' | 'sm' | 'md' | 'lg' | 'xl
 @Component({
   selector:'aurora-fixture-tree',
   imports:[CmAspectRatio,CmBadge,CmBox,CmButton,CmCard,CmCol,CmContainer,CmEmpty,
-    CmGrid,CmGridContainer,CmIcon,CmIconBadge,CmKbd,CmLink,CmMetricCard,CmMetricGrid,CmProgress,CmRow,CmSeparator,
+    CmGrid,CmGridContainer,CmIcon,CmIconBadge,CmItem,CmKbd,CmLink,CmMetricCard,CmMetricGrid,CmProgress,CmRow,CmSeparator,
     CmSkeleton,CmStack,CmStatusDot,CmText,RouterLink,forwardRef(() => FixtureTree)],
   changeDetection:ChangeDetectionStrategy.OnPush,
   host:{style:'display:contents'},
@@ -92,15 +92,29 @@ type ResponsiveCount = number | Partial<Record<'base' | 'sm' | 'md' | 'lg' | 'xl
             </cm-metric-card>
           }
           @case ('CmCard') {
+            <ng-template #header><aurora-fixture-tree [nodes]="slot(node,'header')" /></ng-template>
+            <ng-template #aside><aurora-fixture-tree [nodes]="slot(node,'aside')" /></ng-template>
+            <ng-template #footer><aurora-fixture-tree [nodes]="slot(node,'footer')" /></ng-template>
             <article cmCard [variant]="string(node,'variant') || 'surface'" [tone]="tone(node)" [pattern]="optional(node,'pattern')"
+              [header]="node.slots?.['header'] ? header : undefined" [aside]="node.slots?.['aside'] ? aside : undefined"
+              [footer]="node.slots?.['footer'] ? footer : undefined" [accent]="string(node,'accent') || 'none'"
               [padding]="string(node,'padding') || 'md'" [elevated]="!!node.props['elevated']"><aurora-fixture-tree [nodes]="node.children" /></article>
+          }
+          @case ('CmItem') {
+            @if (node.slots?.['meta']; as meta) {
+              <div class="cm-item"><div class="cm-item__body"><span class="cm-item__title">{{ string(node,'title') }}</span>
+                @if (string(node,'description')) { <span class="cm-item__description">{{ string(node,'description') }}</span> }
+              </div><span class="cm-item__meta"><aurora-fixture-tree [nodes]="meta" /></span></div>
+            } @else {
+              <cm-item [title]="string(node,'title')" [description]="string(node,'description')" [meta]="string(node,'meta')" />
+            }
           }
           @case ('CmSeparator') {
             <span cmSeparator [orientation]="node.props['orientation'] === 'vertical' ? 'vertical' : 'horizontal'" [style.height.px]="node.props['orientation'] === 'vertical' ? numeric(node,'length',16) : null"></span>
           }
           @case ('CmProgress') {
             <cm-progress [min]="numeric(node,'min',0)" [value]="numeric(node,'value',0)" [max]="numeric(node,'max',100)"
-              [label]="optional(node,'label')" [showValue]="!!node.props['showValue']" [tone]="string(node,'tone') || 'primary'" />
+              [label]="optional(node,'label')" [showValue]="!!node.props['showValue']" [barThickness]="length(node,'barThickness')" [tone]="string(node,'tone') || 'primary'" />
           }
           @case ('CmSkeleton') {
             <div cmSkeleton [width]="length(node,'width') ?? '100%'" [height]="length(node,'height') ?? 12" [lines]="numeric(node,'lines',1)" [animated]="node.props['animated'] !== false"></div>
