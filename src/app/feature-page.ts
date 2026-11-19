@@ -83,7 +83,7 @@ export class FeaturePage {
     {label:'Oportunidades',area:'CRM',href:'/app/crm/oportunidades',icon:'target',tone:'primary'},
     {label:'Pedidos',area:'ERP',href:'/app/erp/pedidos',icon:'shopping-bag',tone:'success'},
     {label:'Lançamentos',area:'Financeiro',href:'/app/financeiro/lancamentos',icon:'receipt-text',tone:'info'},
-    {label:'Ordens de serviço',area:'Serviços',href:'/app/servicos/ordens',icon:'wrench',tone:'warning'},
+    {label:'Ordens de serviço',area:'Serviços',href:'/app/servicos/ordens',icon:'clipboard-list',tone:'warning'},
   ]
   readonly day = signal(localDate())
   readonly technician = signal('')

@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
   CmBadge, CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDisclosure, CmDonutChart, CmEmpty, CmField, CmGrid, CmGridContainer,
   CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
-  CmThemeMenu, CmThemeService, CmToastService,
+  CmRatioBar, CmSummaryList, CmThemeMenu, CmThemeService, CmToastService,
 } from '@cosmemilton/ui-angular'
 import { CatalogFrame, previewTheme } from './catalog-frame'
 import { CatalogMapDemo } from './catalog-map-demo'
@@ -26,7 +26,7 @@ const trees = rawTrees as unknown as Record<string,(FixtureChild[] | null)[]>
   selector:'aurora-catalog',
   imports: [RouterLink, CmBadge, CmButton, CmCard, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
     CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
-    FixtureTree, CatalogFrame, CatalogMapDemo, CmBarChart, CmComparisonLineChart, CmDonutChart],
+    FixtureTree, CatalogFrame, CatalogMapDemo, CmBarChart, CmComparisonLineChart, CmDonutChart, CmRatioBar, CmSummaryList],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
@@ -79,6 +79,11 @@ export class CatalogPage {
   readonly revenueAxis = revenueAxis
   readonly orderAxis = orderAxis
   readonly chartMarkup = this.item && chartMarkup[this.item.name]
+  readonly shifts = [{ label: 'Atendimento', value: 24, tone: 'primary' }, { label: 'Plantão', value: 16, tone: 'success' }]
+  readonly hours = signal(this.shifts.map(shift => shift.value))
+  readonly shiftSegments = computed(() => this.shifts.map((shift, i) => ({ ...shift, value: this.hours()[i]!, min: 4 })))
+  readonly shiftSummary = computed(() => this.shiftSegments().map(shift => ({ label: shift.label, value: shift.value + ' h' })))
+  readonly describeHours = ([first, second]: number[]) => first + ' horas de atendimento e ' + second + ' de plantão'
   readonly columns: CmColumn[] = [
     {id:'contact',label:'Cliente'},{id:'city',label:'Cidade'},{id:'value',label:'Valor',align:'right'},{id:'status',label:'Situação'},
   ]

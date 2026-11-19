@@ -39,6 +39,17 @@
                 @case ('CmMap') {
                   <aurora-catalog-map [interactive]="index > 0" />
                 }
+                @case ('CmRatioBar') {
+                  @if (index === 0) {
+                    <cm-ratio-bar [segments]="shifts" aria-label="Capacidade da equipe: 24 h em atendimento e 16 h em plantão" />
+                  } @else {
+                    <div cmStack gap="md">
+                      <cm-ratio-bar handleLabel="Horas de atendimento" [handleIndex]="0" [step]="1" [valueText]="describeHours"
+                        [segments]="shiftSegments()" (valuesChange)="hours.set($event)" />
+                      <cm-summary-list [items]="shiftSummary()" />
+                    </div>
+                  }
+                }
                 @case ('CmButton') {
                   <div class="cm-row cm-layout-wrap">
                     <button cmButton tone="primary" type="button" (click)="announce('Ação principal selecionada.')">Ação principal</button>
