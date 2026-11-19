@@ -1,34 +1,44 @@
 <ng-template #section let-item>
-  <section class="aurora-card">
-    <header class="aurora-card-header">
-      <div>
-        <h2 class="aurora-section-title">{{ item.title }}</h2>
-        @if (item.description) { <p class="cm-text cm-text--sm cm-text--muted">{{ item.description }}</p> }
-      </div>
-      @if (item.action) {
-        <a cmButton variant="outline" size="sm" [routerLink]="item.action.href">{{ item.action.label }} <cm-icon [name]="item.action.icon ?? 'arrow-right'" [size]="16" /></a>
-      }
-    </header>
+  @if (item.kind === 'bar' && path === '/app/dashboard/servicos') {
+    <cm-bar-chart [title]="item.title" [description]="item.description" [data]="item.bars" [height]="item.height" orientation="horizontal" />
+  } @else {
+  <section cmCard bodyPadding="md" [header]="sectionHeader">
+    <ng-template #sectionHeader>
+      <header cmSectionHeader [title]="item.title" [description]="item.description" [actions]="item.action ? sectionActions : undefined"></header>
+      <ng-template #sectionActions>
+        <a cmLink [variant]="item.action.tone ? 'default' : 'quiet'" [tone]="item.action.tone ?? 'default'" [routerLink]="router.parseUrl(item.action.href)">
+          {{ item.action.label }} @if (item.action.icon) { <cm-icon [name]="item.action.icon" [size]="15" /> }
+        </a>
+      </ng-template>
+    </ng-template>
     @switch (item.kind) {
       @case ('bar') {
-        <div class="aurora-chart" role="img" [attr.aria-label]="item.title" [style.min-height.px]="item.height ?? 240">
-          @for (bar of item.bars; track bar.label) {
-            <div class="aurora-bar-column">
-              <span class="aurora-bar-value">{{ item.formatter ? item.formatter(bar.value) : bar.value }}</span>
-              <div class="aurora-bar" [attr.data-tone]="bar.tone ?? 'primary'" [style.height.px]="barHeight(bar.value, item.bars)" [title]="bar.label + ' · ' + bar.value"></div>
-              <span>{{ bar.label }}</span>
+        <div cmStack gap="md">
+          @if (item.bars.length) {
+            <cm-bar-chart [data]="item.bars" [height]="item.height ?? 300" [valueFormat]="item.formatter ?? number.format"
+              [accessibleTableLabel]="path === '/app/dashboard/crm' ? 'Valor por etapa do funil' : item.title"
+              [showValues]="path !== '/app/dashboard/financeiro'" orientation="horizontal" />
+          } @else {
+            <div cmEmpty [title]="item.emptyTitle ?? 'Nenhum dado para exibir'"></div>
+          }
+          @if (item.note; as note) {
+            <div cmRow surface="muted" radius="md" border="sm" padding="md" gap="md" align="center" justify="between" wrap>
+              <div cmStack gap="xs" [minWidth]="0">
+                <span cmText tone="muted">{{ note.label }}</span>
+                <strong cmText weight="bold" wrap="anywhere">{{ note.title }}</strong>
+                <span cmText tone="muted">{{ note.description }}</span>
+              </div>
+              @if (note.action; as action) {
+                <a cmLink variant="quiet" [routerLink]="router.parseUrl(action.href)">{{ action.label }} <cm-icon name="arrow-right" [size]="15" /></a>
+              }
             </div>
           }
         </div>
-        @if (item.note) { <div class="aurora-card-body"><strong>{{ item.note.title }}</strong><p class="cm-text cm-text--muted">{{ item.note.description }}</p></div> }
       }
       @case ('progress') {
-        <div class="aurora-card-body cm-stack">
+        <div cmStack gap="md">
           @for (bar of item.bars; track bar.label) {
-            <div class="cm-stack" style="--cm-layout-gap:.375rem">
-              <div class="cm-row" data-justify="between"><span>{{ bar.label }}</span><strong>{{ bar.value }}</strong></div>
-              <progress class="aurora-progress" [value]="bar.value" [max]="item.max" [attr.aria-label]="bar.label"></progress>
-            </div>
+            <cm-progress [label]="bar.label" [value]="bar.value" [max]="item.max" [valueText]="number.format(bar.value)" showValue />
           }
         </div>
       }
@@ -37,23 +47,24 @@
           [label]="item.title" [emptyMessage]="item.emptyTitle ?? 'Nenhum registro encontrado.'" (rowAction)="tableAction($event)" />
       }
       @default {
-        <div class="aurora-card-body aurora-list">
+        <div class="aurora-list">
           @for (row of item.items; track row.id) {
             <div class="aurora-list-item">
               @if (row.avatar) { <span class="aurora-avatar">{{ row.avatar }}</span> }
               <div>
-                @if (row.href) { <a class="cm-link cm-link--tone-primary" [routerLink]="row.href"><strong>{{ row.title }}</strong></a> } @else { <strong>{{ row.title }}</strong> }
+                @if (row.href) { <a cmLink tone="primary" [routerLink]="router.parseUrl(row.href)"><strong>{{ row.title }}</strong></a> } @else { <strong>{{ row.title }}</strong> }
                 <p class="cm-text cm-text--sm cm-text--muted">{{ row.description }}</p>
               </div>
               @if (row.badge) { <span [class]="'cm-badge cm-badge--soft cm-badge--' + (row.tone ?? 'default')">{{ row.badge }}</span> }
               @if (row.value) { <strong>{{ row.value }}</strong> }
-              @if (row.action) { <a cmButton size="sm" variant="outline" [routerLink]="row.action.href">{{ row.action.label }}</a> }
+              @if (row.action) { <a cmLink [tone]="row.action.tone ?? 'default'" [routerLink]="router.parseUrl(row.action.href)">{{ row.action.label }}</a> }
             </div>
           } @empty { <p class="cm-text cm-text--muted">{{ item.emptyTitle ?? 'Nenhum registro encontrado.' }}</p> }
         </div>
       }
     }
   </section>
+  }
 </ng-template>
 
 <div class="aurora-page">
@@ -115,27 +126,25 @@
     </section>
     <aurora-operations />
   } @else if (domain(); as model) {
-    <header class="aurora-page-header">
-      <div><h1>{{ model.title }}</h1><p>{{ model.description }}</p></div>
-      @if (model.actions.length) {
-        <div class="aurora-page-actions">
-          @for (action of model.actions; track action.href) {
-            <a cmButton [tone]="action.tone === 'primary' ? 'primary' : 'default'" [variant]="action.tone === 'primary' ? 'solid' : 'outline'" [routerLink]="action.href">
-              @if (action.icon) { <cm-icon [name]="action.icon" [size]="16" /> }{{ action.label }}
-            </a>
-          }
-        </div>
+    <header cmPageHeader layout="wrap" [title]="model.title" [description]="model.description" [actions]="model.actions.length ? domainActions : undefined"></header>
+    <ng-template #domainActions>
+      @for (action of model.actions; track action.href) {
+        <a cmLink variant="button" [tone]="action.tone ?? 'default'" [routerLink]="router.parseUrl(action.href)">
+          @if (action.icon && action.icon !== 'arrow-right') { <cm-icon [name]="action.icon" [size]="16" /> }
+          {{ action.label }}
+          @if (action.icon === 'arrow-right') { <cm-icon name="arrow-right" [size]="16" /> }
+        </a>
       }
-    </header>
-    <section class="aurora-metrics" [attr.aria-label]="model.metricLabel">
+    </ng-template>
+    <div cmMetricGrid [label]="model.metricLabel">
       @for (metric of model.metrics; track metric.title) {
-        <article class="aurora-metric" [attr.data-tone]="metric.tone">
-          <div class="aurora-metric-heading"><span>{{ metric.title }}</span><span class="aurora-metric-icon"><cm-icon [name]="metric.icon" [size]="18" /></span></div>
-          <strong class="aurora-metric-value">{{ metric.value }}</strong><p>{{ metric.description }}</p>
-        </article>
+        <cm-metric-card [title]="metric.title" [value]="metric.value" [description]="metric.description"
+          [tone]="metric.tone" [variant]="metric.variant ?? 'surface'" showIcon>
+          <cm-icon cmMetricIcon [name]="metric.icon" [size]="path === '/app/dashboard/erp' ? 18 : 20" />
+        </cm-metric-card>
       }
-    </section>
-    <div class="aurora-grid-two">
+    </div>
+    <div cmGridContainer autoFit [minColumnWidth]="path === '/app/dashboard/servicos' ? '25rem' : '26rem'">
       @for (item of model.sections; track item.title) { <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:item}" /> }
     </div>
     @if (model.bottom; as bottom) { <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:bottom}" /> }
@@ -184,32 +193,6 @@
         <div class="aurora-card-body cm-row" data-justify="between"><strong>Total do pedido</strong><strong>{{ orderMoney(total(order)) }}</strong></div>
       </section>
     }
-  } @else if (report(); as model) {
-    <header class="aurora-page-header">
-      <div><h1>{{ model.name }}</h1><p>{{ model.description }}</p></div>
-      <div class="aurora-page-actions aurora-popup-anchor">
-        <div class="aurora-split-buttons">
-          <button cmButton type="button" tone="primary" (click)="exportReport('pdf')"><cm-icon name="download" [size]="16" /> Exportar PDF</button>
-          <button cmButton type="button" tone="primary" iconOnly aria-label="Outros formatos" [attr.aria-expanded]="downloadMenu()" (click)="downloadMenu.set(!downloadMenu())"><cm-icon name="chevron-down" [size]="16" /></button>
-        </div>
-        @if (downloadMenu()) {
-          <div class="aurora-user-popup" role="menu" aria-label="Formatos de exportação">
-            <button type="button" role="menuitem" (click)="exportReport('csv')">Baixar CSV</button>
-            <button type="button" role="menuitem" (click)="exportReport('json')">Baixar JSON</button>
-          </div>
-        }
-      </div>
-    </header>
-    <section class="aurora-card">
-      <header class="aurora-card-header">
-        <div><h2 class="aurora-section-title">Prévia do relatório</h2><p class="cm-text cm-text--sm cm-text--muted">{{ reportRows().length }} registros</p></div>
-        <label class="aurora-native-field">Situação<select #reportStatus [value]="status()" (change)="status.set(reportStatus.value)">
-          <option value="">Todas</option>
-          @for (choice of model.statusOptions; track choice) { <option [value]="choice">{{ choice }}</option> }
-        </select></label>
-      </header>
-      <cm-data-table [label]="model.name" [columns]="reportColumns()" [rows]="reportRows()" [minimumWidth]="700" [pageSize]="12" [pageSizes]="reportSizes" [totals]="reportSummary()" />
-    </section>
   } @else if (path === '/app/crm/oportunidades') {
     <header class="aurora-page-header">
       <div><h1>Oportunidades</h1><p>Acompanhe as negociações e avance as oportunidades pelo funil comercial.</p></div>

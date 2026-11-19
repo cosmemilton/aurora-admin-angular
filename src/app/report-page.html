@@ -1,0 +1,36 @@
+@if (report(); as current) {
+  <section cmPage fullWidth padding="none" gap="lg">
+    <header cmPageHeader layout="wrap" [title]="current.name" [description]="current.description" [actions]="exportActions"></header>
+    <ng-template #exportActions>
+      <div cmButtonGroup aria-label="Exportação do relatório">
+        <button cmButton type="button" tone="primary" [disabled]="disabled()" [attr.aria-busy]="exporting() || null" (click)="exportFile('pdf')">
+          @if (exporting()) { <span class="cm-button__spinner" aria-hidden="true"></span> Gerando arquivo }
+          @else { <cm-icon name="download" [size]="16" /> Exportar PDF }
+        </button>
+        <button #formatsTrigger cmButton type="button" tone="primary" iconOnly [disabled]="disabled()" aria-label="Outros formatos"
+          aria-haspopup="menu" [attr.aria-expanded]="formatsMenu.open()" [attr.aria-controls]="formatsMenu.menuId"
+          (click)="formatsMenu.toggle(formatsTrigger)" (keydown.arrowdown)="$event.preventDefault(); formatsMenu.show(formatsTrigger)">
+          <cm-icon name="chevron-down" [size]="16" />
+        </button>
+      </div>
+      <cm-dropdown-menu #formatsMenu label="Formatos de exportação" [items]="formats" (selected)="selectFormat($event)" />
+    </ng-template>
+
+    <div cmCard bodyPadding="md">
+      <div cmStack gap="md">
+        <div cmRow align="end" justify="between" gap="md" wrap>
+          <div cmCol grow width="12rem" maxWidth="min(100%, 16rem)">
+            <cm-native-select inputId="report-status" label="Situação" [value]="status()" [options]="options()" (valueChange)="changeStatus($event)" />
+          </div>
+          <span cmText tone="muted" class="cm-text--inline" aria-live="polite">{{ records().length }} {{ records().length === 1 ? 'registro' : 'registros' }}</span>
+        </div>
+        <ng-template #emptyIcon><cm-icon name="file-search" [size]="22" /></ng-template>
+        <cm-data-table density="compact" [label]="current.name" [columns]="columns()" [rows]="records()"
+          [minimumWidth]="760" [pageSize]="12" [pageSizes]="pageSizes" [(page)]="page" [totals]="totals()"
+          emptyTitle="Nenhum registro encontrado" [emptyIcon]="emptyIcon"
+          [emptyDescription]="status() ? 'Consulte as demais situações para ver outros registros.' : 'Os registros cadastrados no módulo aparecem aqui.'"
+          [emptyActionLabel]="status() ? 'Limpar filtro' : undefined" (emptyAction)="changeStatus('')" />
+      </div>
+    </div>
+  </section>
+}

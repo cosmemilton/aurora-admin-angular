@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, injec
 import { toSignal } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
-  CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDonutChart, CmForm, CmFormBody,
+  CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
   CmGridContainer, CmIcon, CmIconBadge, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
   CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText, CmToastService,
 } from '@cosmemilton/ui-angular'
@@ -13,11 +13,10 @@ import { categories, categoryRoot, normalizeSearch } from './navigation'
 import { CrmClient, CrmOpportunity, OpportunityStage, clientStatus, formatCrmCurrency, formatCrmShortDate, newCrmId, opportunityStages } from './reference/crm'
 import { DashboardPeriod, dashboardPeriods, exportDashboardMetrics, formatCurrency, formatNumber, getDashboardMetrics, periodOptions } from './reference/dashboard'
 import { dashboardCharts } from './reference/dashboardCharts'
-import { DashboardMetric, DashboardSection, getDomainDashboard } from './reference/domainDashboards'
+import { DashboardSection, getDomainDashboard } from './reference/domainDashboards'
 import { OrderStatus, formatMoney, orderStatuses, orderTotal } from './reference/erp'
 import { EntryKind, entryKindLabels, financeBalance, financeDate, financeMoney, financeStatus, sumFinance } from './reference/financeiro'
 import { ListingColumn, ListingRow, filterListing, getListing } from './reference/listings'
-import { ReportFormat, downloadReport, getReport, reportRows, reportTotals } from './reference/reports'
 import { getCashFlow, getSchedule, horizonOptions } from './reference/specialViews'
 import { OrderStatus as ServiceStatus, compareAppointments, displayDate, emptyOrder, localDate, orderCode, statusTones, statuses, technicians } from './reference/servicos'
 
@@ -44,7 +43,7 @@ const entryOptions = Object.entries(entryKindLabels).map(([value, label]) => ({v
 
 @Component({
   selector: 'aurora-feature-page',
-  imports: [NgTemplateOutlet, RouterLink, CmButton, CmCard, CmComparisonLineChart, CmDataTable, CmDonutChart, CmForm, CmFormBody,
+  imports: [NgTemplateOutlet, RouterLink, CmBarChart, CmButton, CmCard, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
     CmGridContainer, CmIcon, CmIconBadge, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
     CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmText, Operations],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,7 +53,7 @@ const entryOptions = Object.entries(entryKindLabels).map(([value, label]) => ({v
 export class FeaturePage {
   readonly data = inject(OperationalData)
   private readonly activated = inject(ActivatedRoute)
-  private readonly router = inject(Router)
+  protected readonly router = inject(Router)
   private readonly toast = inject(CmToastService)
   readonly path = this.activated.snapshot.data['path'] as string
   readonly queryParams = toSignal(this.activated.queryParamMap, {initialValue:this.activated.snapshot.queryParamMap})
@@ -66,7 +65,6 @@ export class FeaturePage {
   readonly listingPageSize = ['/app/crm/clientes', '/app/erp/estoque', '/app/servicos/ordens'].includes(this.path) ? 0 : 10
   readonly editor = signal<Editor | null>(null)
   readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('editorDialog')
-  readonly downloadMenu = signal(false)
   readonly columnsMenu = signal(false)
   readonly visibleColumns = signal<Readonly<Record<string, boolean>>>({})
   readonly period = signal<DashboardPeriod>(30)
@@ -84,7 +82,6 @@ export class FeaturePage {
     {label:'Lançamentos',area:'Financeiro',href:'/app/financeiro/lancamentos',icon:'receipt-text',tone:'info'},
     {label:'Ordens de serviço',area:'Serviços',href:'/app/servicos/ordens',icon:'wrench',tone:'warning'},
   ]
-  readonly reportSizes = [12, 24, 48]
   readonly day = signal(localDate())
   readonly technician = signal('')
   readonly projection = signal(30)
@@ -118,20 +115,6 @@ export class FeaturePage {
   readonly tableRows = computed(() => mapRows(this.filteredListing()))
   readonly tableColumns = computed(() => mapColumns(this.initialListing()?.columns.filter(column => this.visibleColumns()[column.key] ?? !column.defaultHidden) ?? []))
   readonly domain = computed(() => getDomainDashboard(this.path, this.data.dashboardSources()))
-  readonly report = computed(() => getReport(this.path, {inventory: this.data.inventory.value(), entries: this.data.entries.value(), orders: this.data.serviceOrders.value()}))
-  readonly reportRows = computed(() => {
-    const report = this.report()
-    if (!report) return []
-    return reportRows(report, this.status()).map(record => ({
-      id: record.id,
-      cells: Object.fromEntries(record.cells.map((cell,index) => [report.columns[index].key, { label: cell.formatted, sortValue: cell.raw ?? '' }])),
-    }))
-  })
-  readonly reportColumns = computed(() => (this.report()?.columns ?? []).map(column => ({ id:column.key, label:column.header, align:column.align })))
-  readonly reportSummary = computed(() => {
-    const report = this.report()
-    return report ? reportTotals(report, reportRows(report, this.status())) ?? null : null
-  })
   readonly selectedOrder = computed(() => this.data.orders.value().find(row => row.id === this.queryParams().get('pedido')))
   readonly orderItemColumns: CmColumn[] = [
     {id:'item',label:'Item'}, {id:'quantity',label:'Quantidade',align:'right'}, {id:'unit',label:'Valor unitário',align:'right'}, {id:'subtotal',label:'Subtotal',align:'right'},
@@ -367,22 +350,9 @@ export class FeaturePage {
   orderStatus = orderStatuses
   sectionRows(section: DashboardSection) { return section.kind === 'table' ? mapRows(section.rows) : [] }
   sectionColumns(section: DashboardSection) { return section.kind === 'table' ? mapColumns(section.columns) : [] }
-  barHeight(value: number, bars: {value:number}[]) {
-    const max = Math.max(1, ...bars.map(bar => bar.value))
-    return Math.max(2, value / max * 155)
-  }
-  toneClass(metric: DashboardMetric) { return 'cm-metric-card cm-metric-card--tone-' + metric.tone + ' cm-metric-card--' + (metric.variant ?? 'soft') }
-
   updateDay(value: string) { this.day.set(value) }
   today() { this.day.set(localDate()) }
   setPeriod(value: string) { this.period.set(Number(value) as DashboardPeriod) }
   setProjection(value: string) { this.projection.set(Number(value)) }
   exportMetrics() { exportDashboardMetrics(this.period()); this.toast.show('Indicadores exportados.', {tone:'success'}) }
-  exportReport(format: ReportFormat) {
-    const report = this.report()
-    if (!report) return
-    try { downloadReport(report,this.status(),format); this.toast.show('Relatório exportado.',{tone:'success'}) }
-    catch(error) { this.toast.show(error instanceof Error ? error.message : 'Tente novamente.',{tone:'danger'}) }
-    this.downloadMenu.set(false)
-  }
 }

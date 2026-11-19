@@ -6,6 +6,7 @@ import { catalog, categories, categoryRoot, pages } from './navigation'
 
 const authPage = () => import('./auth-page').then(module => module.AuthPage)
 const featurePage = () => import('./feature-page').then(module => module.FeaturePage)
+const reportPage = () => import('./report-page').then(module => module.ReportPage)
 const catalogPage = () => import('./catalog-page').then(module => module.CatalogPage)
 const fromApp = (path: string) => path.slice('/app/'.length)
 
@@ -32,7 +33,10 @@ function oldLogin(destination: string): CanActivateFn {
 }
 
 const adminPages: Routes = [
-  ...pages.map(item => ({ path:fromApp(item.path), data:{path:item.path}, loadComponent: featurePage })),
+  ...pages.map(item => ({
+    path: fromApp(item.path), data: { path: item.path },
+    loadComponent: item.path.startsWith('/app/relatorios/') ? reportPage : featurePage,
+  })),
   { path:'componentes', data:{path:categoryRoot}, loadComponent:catalogPage },
   ...categories.map(category => ({path:'componentes/' + category.id,data:{path:categoryRoot + '/' + category.id},loadComponent:catalogPage})),
   ...catalog.map(item => ({path:fromApp(item.path),data:{path:item.path},loadComponent:catalogPage})),
