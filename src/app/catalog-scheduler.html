@@ -1,0 +1,62 @@
+<div cmStack gap="sm">
+  <div class="cm-scheduler" [style.--cm-scheduler-days]="days().length">
+    @if (advanced()) {
+      <div class="cm-scheduler__toolbar">
+        <div class="cm-scheduler__nav">
+          <button cmButton variant="outline" size="sm" iconOnly type="button" [attr.aria-label]="weekly() ? 'Semana anterior' : 'Dia anterior'" (click)="advance(-1)">
+            <cm-icon name="chevron-left" [size]="16" />
+          </button>
+          <button cmButton variant="outline" size="sm" type="button" (click)="date.set(today)">Hoje</button>
+          <button cmButton variant="outline" size="sm" iconOnly type="button" [attr.aria-label]="weekly() ? 'Próxima semana' : 'Próximo dia'" (click)="advance(1)">
+            <cm-icon name="chevron-right" [size]="16" />
+          </button>
+        </div>
+        <span class="cm-scheduler__title" aria-live="polite">{{ title() }}</span>
+        <div class="cm-scheduler__views" role="group" aria-label="Visão da agenda">
+          <button cmButton size="sm" type="button" [variant]="weekly() ? 'outline' : 'solid'" [attr.aria-pressed]="!weekly()" (click)="weekly.set(false)">Dia</button>
+          <button cmButton size="sm" type="button" [variant]="weekly() ? 'solid' : 'outline'" [attr.aria-pressed]="weekly()" (click)="weekly.set(true)">Semana</button>
+        </div>
+      </div>
+    }
+    <div class="cm-scheduler__scroll" [attr.role]="weekly() ? 'region' : null" [attr.aria-label]="weekly() ? 'Horários da semana' : null"
+      [attr.tabindex]="weekly() ? 0 : null">
+      <div class="cm-scheduler__grid">
+        <div class="cm-scheduler__corner" aria-hidden="true"></div>
+        @for (day of days(); track dayKey(day)) {
+          <div class="cm-scheduler__day-header" [class.cm-scheduler__day-header--today]="dayKey(day) === dayKey(today)">
+            <span class="cm-scheduler__day-name">{{ weekdays.format(day) }}</span>
+            <span class="cm-scheduler__day-number">{{ day.getDate() }}</span>
+          </div>
+        }
+        <div class="cm-scheduler__gutter" aria-hidden="true">
+          @for (hour of hourMarks; track hour) { <span class="cm-scheduler__gutter-label">{{ time(hour) }}</span> }
+        </div>
+        @for (day of days(); track dayKey(day)) {
+          <div class="cm-scheduler__day-col" [class.cm-scheduler__day-col--today]="dayKey(day) === dayKey(today)">
+            @for (minute of slots; track minute) {
+              @if (advanced()) {
+                <button class="cm-scheduler__slot" [class.cm-scheduler__slot--minor]="minute % 60 !== 0" type="button"
+                  [attr.aria-label]="dayTitle.format(day) + ', ' + time(minute)" (click)="reserve(day, minute)"></button>
+              } @else {
+                <div class="cm-scheduler__slot" [class.cm-scheduler__slot--minor]="minute % 60 !== 0" aria-hidden="true"></div>
+              }
+            }
+            @for (event of eventsFor(day); track event.start) {
+              <button class="cm-scheduler__event" [class]="'cm-scheduler__event--tone-' + event.tone" type="button"
+                [style.top.px]="(event.start - startMinute) * 0.8" [style.height.px]="event.duration * 0.8"
+                style="left:0;width:calc(100% - 2px)" [attr.aria-label]="event.title + ', ' + timeRange(event)" (click)="selected.set(event)">
+                <span class="cm-scheduler__event-time">{{ timeRange(event) }}</span>
+                <span class="cm-scheduler__event-title">{{ event.title }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+  @if (selected(); as event) {
+    <p cmText size="sm" aria-live="polite">{{ eventSummary(event, advanced()) }}</p>
+  } @else if (advanced()) {
+    <p cmText size="sm" aria-live="polite">Selecione um horário livre para incluir uma visita de 30 minutos.</p>
+  }
+</div>

@@ -1,24 +1,24 @@
-import { NgTemplateOutlet } from '@angular/common'
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, viewChild } from '@angular/core'
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common'
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, inject, signal, untracked, viewChild } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
-  CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
-  CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
+  CmAvatar, CmBadge, CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
+  CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmListPanel, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
   CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText, CmToastService,
 } from '@cosmemilton/ui-angular'
 import { OperationalData } from './operational-data'
 import { Operations } from './operations'
 import { categories, categoryRoot, normalizeSearch } from './navigation'
-import { CrmClient, CrmOpportunity, OpportunityStage, clientStatus, formatCrmCurrency, formatCrmShortDate, newCrmId, opportunityStages } from './reference/crm'
+import { CrmClient, CrmOpportunity, clientStatus, formatCrmCurrency, formatCrmShortDate, newCrmId, opportunityStages } from './reference/crm'
 import { DashboardPeriod, dashboardPeriods, exportDashboardMetrics, formatCurrency, formatNumber, getDashboardMetrics, periodOptions } from './reference/dashboard'
 import { dashboardCharts } from './reference/dashboardCharts'
 import { DashboardSection, getDomainDashboard } from './reference/domainDashboards'
 import { OrderStatus, formatMoney, orderStatuses, orderTotal } from './reference/erp'
-import { EntryKind, entryKindLabels, financeBalance, financeDate, financeMoney, financeStatus, sumFinance } from './reference/financeiro'
+import { EntryKind, entryKindLabels, financeDate, financeMoney } from './reference/financeiro'
 import { ListingColumn, ListingRow, filterListing, getListing } from './reference/listings'
 import { getCashFlow, getSchedule, horizonOptions } from './reference/specialViews'
-import { OrderStatus as ServiceStatus, compareAppointments, displayDate, emptyOrder, localDate, orderCode, statusTones, statuses, technicians } from './reference/servicos'
+import { OrderStatus as ServiceStatus, displayDate, emptyOrder, localDate, orderCode, statuses, technicians } from './reference/servicos'
 
 type EditKind = 'edit-client' | 'select-order' | 'adjust-stock' | 'settle-entry' | 'edit-service-order' | 'new-opportunity' | 'new-entry' | 'schedule'
 type Option = { value: string; label: string }
@@ -35,16 +35,23 @@ function mapRows(rows: ListingRow[]): CmTableRow[] {
   }))
 }
 function mapColumns(columns: ListingColumn[]): CmColumn[] {
-  return columns.map(column => ({ id: column.key, label: column.header, align: column.align, sortable: column.sortable }))
+  return columns.map(({key, header, ...options}) => ({ id: key, label: header, ...options }))
 }
 const orderOptions = Object.entries(orderStatuses).map(([value, item]) => ({ value, label:item.label }))
 const clientOptions = Object.entries(clientStatus).map(([value, item]) => ({ value, label:item.label }))
 const entryOptions = Object.entries(entryKindLabels).map(([value, label]) => ({value,label}))
+const listingTables: Record<string, { key: string; pageSize?: number; sort?: string }> = {
+  '/app/crm/clientes': { key: 'aurora.crm.clientes' },
+  '/app/erp/pedidos': { key: 'aurora.erp.pedidos', pageSize: 10, sort: 'id' },
+  '/app/erp/estoque': { key: 'aurora.erp.estoque' },
+  '/app/financeiro/lancamentos': { key: 'aurora.financeiro.lancamentos', pageSize: 20, sort: 'dueDate' },
+  '/app/servicos/ordens': { key: 'aurora.servicos.ordens' },
+}
 
 @Component({
   selector: 'aurora-feature-page',
-  imports: [NgTemplateOutlet, RouterLink, CmBarChart, CmButton, CmCard, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
-    CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
+  imports: [NgTemplateOutlet, RouterLink, CmAvatar, CmBadge, CmBarChart, CmButton, CmCard, CmComparisonLineChart, CmDataTable, CmDonutChart, CmEmpty, CmForm, CmFormBody,
+    CmGridContainer, CmIcon, CmIconBadge, CmLineChart, CmLink, CmListPanel, CmMetricCard, CmMetricGrid, CmNativeInput, CmNativeSelect,
     CmPageHeader, CmProgress, CmRow, CmSectionHeader, CmStack, CmText, Operations],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './feature-page.html',
@@ -53,9 +60,11 @@ const entryOptions = Object.entries(entryKindLabels).map(([value, label]) => ({v
 export class FeaturePage {
   readonly data = inject(OperationalData)
   private readonly activated = inject(ActivatedRoute)
+  private readonly document = inject(DOCUMENT)
   protected readonly router = inject(Router)
   private readonly toast = inject(CmToastService)
   readonly path = this.activated.snapshot.data['path'] as string
+  readonly listingTable = listingTables[this.path]
   readonly queryParams = toSignal(this.activated.queryParamMap, {initialValue:this.activated.snapshot.queryParamMap})
   readonly query = signal('')
   readonly status = signal('')
@@ -65,11 +74,9 @@ export class FeaturePage {
   readonly entryKind = signal('')
   readonly entryKinds = entryOptions
   readonly financeListing = this.path === '/app/financeiro/lancamentos'
-  readonly listingPageSize = ['/app/crm/clientes', '/app/erp/estoque', '/app/servicos/ordens'].includes(this.path) ? 0 : 10
+  readonly listingPage = signal(1)
   readonly editor = signal<Editor | null>(null)
   readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('editorDialog')
-  readonly columnsMenu = signal(false)
-  readonly visibleColumns = signal<Readonly<Record<string, boolean>>>({})
   readonly period = signal<DashboardPeriod>(30)
   readonly dashboardMetrics = computed(() => getDashboardMetrics(this.period()).map(item => ({ ...item, change: {
     value: item.trend, formattedValue: formatNumber.format(Math.abs(item.trend)) + item.unit, label: 'vs. período anterior',
@@ -91,7 +98,8 @@ export class FeaturePage {
   readonly technicians = technicians
   readonly categories = categories
   readonly categoryRoot = categoryRoot
-  readonly stageOptions = opportunityStages
+  readonly stageOptions = [{ value:'', label:'Todas as etapas' }, ...opportunityStages.map(stage => ({ value:stage.id, label:stage.label }))]
+  readonly opportunityStage = computed(() => opportunityStages.find(stage => stage.id === this.queryParams().get('etapa'))?.id ?? '')
   readonly money = financeMoney
   protected readonly financeChartTooltip = (point: { label: string; value: number }) => `${point.label}: ${financeMoney(point.value)}`
   readonly crmCurrency = formatCrmCurrency
@@ -117,7 +125,7 @@ export class FeaturePage {
     return count + ' de ' + listing.rows.length + ' ' + listing.recordName
   })
   readonly tableRows = computed(() => mapRows(this.filteredListing()))
-  readonly tableColumns = computed(() => mapColumns(this.initialListing()?.columns.filter(column => this.visibleColumns()[column.key] ?? !column.defaultHidden) ?? []))
+  readonly tableColumns = computed(() => mapColumns(this.initialListing()?.columns ?? []))
   readonly domain = computed(() => getDomainDashboard(this.path, this.data.dashboardSources()))
   readonly selectedOrder = computed(() => this.data.orders.value().find(row => row.id === this.queryParams().get('pedido')))
   readonly orderItemColumns: CmColumn[] = [
@@ -134,11 +142,14 @@ export class FeaturePage {
   readonly visibleDeals = computed(() => {
     const query = normalizeSearch(this.query())
     return this.data.opportunities.value().filter(deal => {
-      const company = this.data.clients.value().find(client => client.id === deal.clientId)?.company
-      return (!this.status() || this.status() === deal.owner) && normalizeSearch(deal.title + ' ' + deal.owner + ' ' + company).includes(query)
+      return (!this.opportunityStage() || this.opportunityStage() === deal.stage) &&
+        normalizeSearch(`${deal.title} ${this.company(deal)} ${deal.owner}`).includes(query)
     })
   })
-  readonly owners = computed(() => [...new Set(this.data.opportunities.value().map(deal => deal.owner))].sort())
+  readonly dealStages = computed(() => opportunityStages.filter(stage => !this.opportunityStage() || stage.id === this.opportunityStage()).map(stage => {
+    const deals = this.visibleDeals().filter(deal => deal.stage === stage.id)
+    return { ...stage, deals, total: deals.reduce((sum, deal) => sum + deal.value, 0) }
+  }))
   readonly cashFlow = computed(() => getCashFlow(this.data.entries.value(), this.projection()))
   readonly financeRows = computed(() => mapRows(this.cashFlow().rows))
   readonly financeColumns = computed(() => mapColumns(this.cashFlow().columns).map(column => ({...column, sortable:false})))
@@ -146,16 +157,24 @@ export class FeaturePage {
   readonly listingAction = computed(() => {
     if (this.path === '/app/crm/clientes') return {kind:'edit-client' as const,label:'Novo cliente',icon:'user-round-plus'}
     if (this.path === '/app/financeiro/lancamentos') return {kind:'new-entry' as const,label:'Novo lançamento',icon:'plus'}
-    if (this.path === '/app/servicos/ordens') return {kind:'edit-service-order' as const,label:'Nova ordem de serviço',icon:'plus'}
+    if (this.path === '/app/servicos/ordens') return {kind:'edit-service-order' as const,label:'Nova ordem',icon:'plus'}
     return null
   })
 
   constructor() {
     effect(() => {
       const id = this.queryParams().get('ordem')
-      if (!id) return
-      if (this.path === '/app/servicos/ordens') this.open('edit-service-order',id === 'nova' ? undefined : Number(id))
-      if (this.path === '/app/servicos/agenda' && Number(id)) this.open('schedule',Number(id))
+      if (!this.serviceListing && this.path !== '/app/servicos/agenda') return
+      untracked(() => {
+        if (!id) {
+          this.dialog()?.nativeElement.close()
+          this.editor.set(null)
+        } else if (this.serviceListing && (id === 'nova' || this.data.serviceOrders.value().some(order => String(order.id) === id))) {
+          this.open('edit-service-order', id === 'nova' ? undefined : Number(id))
+        } else if (this.path === '/app/servicos/agenda' && this.data.serviceOrders.value().some(order => String(order.id) === id && order.status !== 'Concluída')) {
+          this.open('schedule', Number(id))
+        }
+      })
     })
     effect(() => {
       const editor = this.editor()
@@ -164,16 +183,24 @@ export class FeaturePage {
     })
   }
 
-  setColumn(column: ListingColumn, event: Event) {
-    const checked = (event.target as HTMLInputElement).checked
-    this.visibleColumns.update(value => ({...value, [column.key]: checked}))
+  openListingAction(kind: EditKind) {
+    if (kind === 'edit-service-order') this.setServiceOrder('nova')
+    else this.open(kind)
+  }
+  setServiceOrder(id: string | number) {
+    void this.router.navigate([], {relativeTo:this.activated, queryParams:{ordem:id}, queryParamsHandling:'merge', replaceUrl:true})
+  }
+  scheduleNext() {
+    const order = this.nextService()
+    if (order) this.setServiceOrder(order.id)
   }
   tableAction(event: { action: string; row: CmTableRow }) {
     if (event.action === 'select-order') {
       void this.router.navigate([], {relativeTo:this.activated, queryParams:{pedido:event.row.id}, queryParamsHandling:'merge'})
       return
     }
-    this.open(this.path === '/app/servicos/agenda' ? 'schedule' : event.action as EditKind, event.row.id)
+    if (event.action === 'edit-service-order') this.setServiceOrder(event.row.id)
+    else this.open(event.action as EditKind, event.row.id)
   }
 
   open(kind: EditKind, id?: string | number) {
@@ -221,15 +248,16 @@ export class FeaturePage {
       case 'edit-service-order':
       case 'schedule': {
         const order = this.data.serviceOrders.value().find(item => item.id === id)
+        const scheduling = kind === 'schedule'
         const scheduleFields: Field[] = [
-          {name:'technician',label:'Técnico',options:options(technicians),value:order?.technician},
-          {name:'date',label:'Data da visita',type:'date',value:order?.date || localDate()},
-          {name:'time',label:'Horário',type:'time',value:order?.time || '09:00'},
+          {name:'technician',label:'Técnico responsável',options:options(technicians),value:order?.technician || (scheduling ? this.technician() || technicians[0] : '')},
+          {name:'date',label:'Data da visita',type:'date',value:order?.date || (scheduling ? this.day() || localDate() : '')},
+          {name:'time',label:'Horário da visita',type:'time',value:order?.time},
         ]
-        editor = kind === 'schedule' && order ? {kind,id,title:order.status === 'Aberta' ? 'Agendar visita' : 'Reagendar visita',
+        editor = scheduling && order ? {kind,id,title:'Agendar atendimento',
           description:orderCode(order.id) + ' · ' + order.service,fields:scheduleFields} : {
-          kind:'edit-service-order',id:order?.id,title:order?'Editar ordem de serviço':'Nova ordem de serviço',fields:[
-            {name:'service',label:'Serviço',value:order?.service},{name:'client',label:'Cliente',value:order?.client},
+          kind:'edit-service-order',id:order?.id,title:order ? `Editar ${orderCode(order.id)}` : 'Nova ordem de serviço',fields:[
+            {name:'service',label:'Serviço solicitado',value:order?.service},{name:'client',label:'Cliente',value:order?.client},
             {name:'status',label:'Situação',options:options(statuses),value:order?.status ?? 'Aberta'},
             ...scheduleFields.map(field => ({...field,required:false})),
           ],
@@ -313,20 +341,34 @@ export class FeaturePage {
           const list = this.data.serviceOrders.value()
           const old = list.find(item=>item.id===id)
           const schedule = editor.kind === 'schedule'
+          const status = schedule ? (old && old.status !== 'Aberta' ? old.status : 'Agendada') : text('status') as ServiceStatus
+          const hasAppointment = status !== 'Aberta'
           const next = {
             ...(old ?? emptyOrder()), id: old?.id ?? Math.max(1000,...list.map(item=>item.id))+1,
-            status: schedule ? 'Agendada' as const : text('status') as ServiceStatus,
+            status,
             service: schedule ? old?.service ?? '' : text('service'), client: schedule ? old?.client ?? '' : text('client'),
-            technician:text('technician'),date:text('date'),time:text('time'),
+            technician:hasAppointment ? text('technician') : '', date:hasAppointment ? text('date') : '', time:hasAppointment ? text('time') : '',
           }
-          if (next.status === 'Agendada' && (!next.technician || !next.date || !next.time)) throw new Error('Informe técnico, data e horário da visita.')
+          if (hasAppointment) {
+            const missing = (['technician', 'date', 'time'] as const).find(field => !next[field])
+            if (missing) {
+              ;(form.elements.namedItem(missing) as HTMLElement | null)?.focus()
+              throw new Error('Informe técnico, data e horário da visita.')
+            }
+            if (list.some(order => order.id !== next.id && order.technician === next.technician && order.date === next.date && order.time === next.time)) {
+              ;(form.elements.namedItem('time') as HTMLElement | null)?.focus()
+              throw new Error('Este técnico já tem um atendimento nesse horário. Escolha outro horário ou técnico.')
+            }
+          }
           this.data.serviceOrders.save(old ? list.map(item=>item.id===id?next:item) : [next,...list])
           if (schedule) this.day.set(next.date)
-          notice = schedule ? 'Visita agendada.' : 'Ordem de serviço salva.'
+          notice = schedule ? 'Agendamento salvo.' : old ? 'Ordem de serviço atualizada.' : 'Ordem de serviço criada.'
           break
         }
         case 'new-opportunity':
           this.data.opportunities.save([{id:newCrmId(),title:text('title'),clientId:text('clientId'),value:decimal('value'),stage:'qualification',expectedAt:text('expectedAt'),owner:text('owner')}, ...this.data.opportunities.value()])
+          this.query.set('')
+          this.setOpportunityStage('')
           notice = 'Oportunidade cadastrada.'
       }
       this.closeEditor()
@@ -341,24 +383,45 @@ export class FeaturePage {
     if (!next) return
     try {
       this.data.opportunities.save(this.data.opportunities.value().map(item=>item.id===deal.id?{...item,stage:next.id}:item))
-      this.toast.show(next.id === 'won' ? 'Venda fechada.' : 'Etapa atualizada.',{tone:'success'})
+      this.toast.show(`${deal.title} passou para ${next.label}.`, {tone:'success'})
+      requestAnimationFrame(() => {
+        const stage = this.opportunityStage()
+        this.document.getElementById(stage ? `crm-stage-${stage}` : `crm-deal-${deal.id}`)?.focus()
+      })
     } catch(error) { this.toast.show(error instanceof Error ? error.message : 'Tente novamente.',{tone:'danger'}) }
   }
 
-  company(deal: CrmOpportunity) { return this.data.clients.value().find(client=>client.id===deal.clientId)?.company ?? '' }
-  deals(stage: OpportunityStage) { return this.visibleDeals().filter(deal=>deal.stage===stage) }
+  company(deal: CrmOpportunity) { return this.data.clients.value().find(client=>client.id===deal.clientId)?.company ?? 'Cliente indisponível' }
+  setOpportunityStage(stage: string) {
+    void this.router.navigate([], {relativeTo:this.activated, queryParams:{etapa:stage || null}, queryParamsHandling:'merge', replaceUrl:true})
+  }
   orderMoney = formatMoney
   total = orderTotal
   orderStatus = orderStatuses
   sectionRows(section: DashboardSection) { return section.kind === 'table' ? mapRows(section.rows) : [] }
   sectionColumns(section: DashboardSection) { return section.kind === 'table' ? mapColumns(section.columns) : [] }
   updateDay(value: string) { this.day.set(value) }
+  changeListingQuery(query: string) {
+    this.query.set(query)
+    this.listingPage.set(1)
+  }
+  changeEntryKind(kind: string) {
+    this.entryKind.set(kind)
+    this.listingPage.set(1)
+  }
   protected changeListingStatus(status: string) {
+    this.listingPage.set(1)
     if (this.serviceListing) {
       void this.router.navigate([], { relativeTo: this.activated, queryParams: { situacao: status || null }, queryParamsHandling: 'merge', replaceUrl: true })
     } else {
       this.status.set(status)
     }
+  }
+  clearListingFilters() {
+    this.changeListingQuery('')
+    this.changeListingStatus('')
+    this.changeEntryKind('')
+    this.document.getElementById('aurora-listing-search')?.focus()
   }
   today() { this.day.set(localDate()) }
   setPeriod(value: string) { this.period.set(Number(value) as DashboardPeriod) }

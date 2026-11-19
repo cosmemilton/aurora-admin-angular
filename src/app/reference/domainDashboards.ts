@@ -20,12 +20,12 @@ export type DashboardItem = {
   action?: DashboardLink
 }
 
-type Section = { title: string; description?: string; action?: DashboardLink; emptyTitle?: string }
+type Section = { title: string; description?: string; action?: DashboardLink; emptyTitle?: string; emptyDescription?: string }
 export type DashboardSection = Section & (
   | { kind: 'bar'; bars: DashboardBar[]; height?: number; formatter?: (value: number) => string; note?: DashboardItem }
   | { kind: 'progress'; bars: DashboardBar[]; max: number }
   | { kind: 'list' | 'timeline'; items: DashboardItem[]; connected?: boolean }
-  | { kind: 'table'; columns: ListingColumn[]; rows: ListingRow[]; minWidth: number }
+  | { kind: 'table'; columns: ListingColumn[]; rows: ListingRow[]; minWidth: number; density?: 'compact' }
 )
 
 export type DomainDashboard = {
@@ -100,8 +100,8 @@ function erpDashboard(orders: Order[], products: Product[]): DomainDashboard {
       { kind: 'progress', title: 'Pedidos por status', description: `${orders.length} pedidos de venda`, max: Math.max(orders.length, 1),
         bars: statusOptions.map(({ value, label }) => ({ label, value: orders.filter(order => order.status === value).length })) },
       { kind: 'table', title: 'Atenção ao estoque', description: 'Produtos no limite de reposição',
-        action: { label: 'Ver estoque', href: '/app/erp/estoque', icon: 'arrow-right' }, minWidth: 300,
-        emptyTitle: 'Estoque em dia', columns: [
+        action: { label: 'Ver estoque', href: '/app/erp/estoque', icon: 'arrow-right' }, minWidth: 300, density: 'compact',
+        emptyTitle: 'Estoque em dia', emptyDescription: 'Todos os produtos estão acima do saldo mínimo.', columns: [
           { key: 'name', header: 'Produto', sortable: true }, { key: 'quantity', header: 'Saldo', align: 'right', sortable: true },
           { key: 'minimum', header: 'Mínimo', align: 'right', sortable: true },
         ], rows: lowStock.map(product => ({
@@ -112,7 +112,7 @@ function erpDashboard(orders: Order[], products: Product[]): DomainDashboard {
     bottom: { kind: 'table', title: 'Pedidos recentes', emptyTitle: 'Nenhum pedido registrado', minWidth: 500,
       action: { label: 'Ver pedidos', href: '/app/erp/pedidos', icon: 'arrow-right' },
       columns: orderList.columns.filter(column => column.key !== 'payment'), rows: orderList.rows.map(row => ({
-        ...row, cells: { ...row.cells, id: { text: row.cells.id.text } },
+        ...row, cells: { ...row.cells, id: { text: row.cells.id.text, weight: 'bold', sortValue: row.cells.id.sortValue } },
       })) },
   }
 }

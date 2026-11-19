@@ -1,0 +1,54 @@
+@if (lightbox()) {
+  <div cmStack gap="md">
+    <div cmRow gap="sm" wrap>
+      @for (image of images(); track image.file; let index = $index) {
+        <button cmButton type="button" variant="outline" aria-haspopup="dialog" (click)="show(index)">
+          {{ advanced() ? image.caption : 'Ampliar visão geral' }}
+        </button>
+      }
+    </div>
+    @if (advanced()) { <p cmText size="sm" tone="muted">Painel selecionado: {{ active().caption }}</p> }
+  </div>
+} @else {
+  <ul class="cm-gallery" style="--cm-gallery-ratio:1.6;--cm-gallery-columns-sm:2;--cm-gallery-columns-md:2"
+    [style.--cm-gallery-columns-base]="advanced() ? 1 : 2"
+    [style.--cm-gallery-columns-lg]="advanced() ? 3 : 2"
+    [style.--cm-gallery-columns-xl]="advanced() ? 3 : 2">
+    @for (image of images(); track image.file; let index = $index) {
+      <li class="cm-gallery__cell">
+        @if (advanced()) {
+          <button class="cm-gallery__item" type="button" [attr.aria-label]="image.alt" aria-haspopup="dialog" (click)="show(index)">
+            <img class="cm-gallery__image" [src]="'catalog-gallery/' + image.file" alt="" loading="lazy">
+          </button>
+        } @else {
+          <div class="cm-gallery__item">
+            <img class="cm-gallery__image" [src]="'catalog-gallery/' + image.file" [alt]="image.alt" loading="lazy">
+          </div>
+        }
+      </li>
+    }
+  </ul>
+}
+
+<cm-dialog [open]="open()" (openChange)="open.set($event)" size="xl" title="Galeria de imagens">
+  <div cmStack gap="md" (keydown.arrowleft)="move(-1); $event.preventDefault()" (keydown.arrowright)="move(1); $event.preventDefault()">
+    <img class="cm-gallery__image" [src]="'catalog-gallery/' + active().file" [alt]="active().alt">
+    <p cmText size="sm" aria-live="polite">
+      {{ active().caption }} @if (advanced()) { · {{ selected() + 1 }} / {{ images().length }} }
+    </p>
+    @if (advanced()) {
+      <div cmRow gap="sm" wrap>
+        <button cmButton type="button" variant="outline" (click)="move(-1)">Painel anterior</button>
+        <button cmButton type="button" variant="outline" (click)="move(1)">Próximo painel</button>
+      </div>
+      <div class="cm-lightbox__thumbs" role="group" aria-label="Miniaturas">
+        @for (image of images(); track image.file; let index = $index) {
+          <button type="button" class="cm-lightbox__thumb" [class.cm-lightbox__thumb--active]="index === selected()"
+            [attr.aria-pressed]="index === selected()" [attr.aria-label]="image.caption" (click)="selected.set(index)">
+            <img class="cm-lightbox__thumb-image" [src]="'catalog-gallery/' + image.file" alt="">
+          </button>
+        }
+      </div>
+    }
+  </div>
+</cm-dialog>

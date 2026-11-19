@@ -78,15 +78,15 @@ export function getSchedule(orders: ServiceOrder[] = initialOrders, date = local
     { key: 'client', header: 'Cliente', sortable: true },
     { key: 'technician', header: 'Técnico', sortable: true },
     { key: 'status', header: 'Situação', sortable: true },
-    { key: 'id', header: 'Ordem', hideable: false },
+    { key: 'id', header: 'Ordem', hideable: false, sortable: false },
   ]
   const rows: ListingRow[] = matching.map(order => ({
     id: order.id, status: order.status, search: '', cells: {
-      time: { text: order.time }, service: { text: order.service }, client: { text: order.client },
+      time: { text: order.time, weight: 'bold' }, service: { text: order.service }, client: { text: order.client },
       technician: { text: order.technician || 'A definir' }, status: { text: order.status, tone: statusTones[order.status] },
       id: order.status === 'Concluída'
         ? { text: orderCode(order.id), href: `/app/servicos/ordens?ordem=${order.id}` }
-        : { text: 'Reagendar', action: 'edit-service-order', actionLabel: `Reagendar ${orderCode(order.id)}` },
+        : { text: 'Reagendar', action: 'edit-service-order', actionVariant: 'link', actionTone: 'primary', actionLabel: `Reagendar ${orderCode(order.id)}` },
     },
   }))
   return {

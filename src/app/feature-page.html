@@ -54,7 +54,8 @@
       }
       @case ('table') {
         <cm-data-table [columns]="sectionColumns(item)" [rows]="sectionRows(item)" [minimumWidth]="item.minWidth" [pageSize]="0"
-          [label]="item.title" [emptyMessage]="item.emptyTitle ?? 'Nenhum registro encontrado.'" (rowAction)="tableAction($event)" />
+          [density]="item.density ?? 'normal'" [label]="item.title" [emptyTitle]="item.emptyTitle"
+          [emptyDescription]="item.emptyDescription" (rowAction)="tableAction($event)" />
       }
       @case ('timeline') {
         @if (item.items.length) {
@@ -91,19 +92,26 @@
         }
       }
       @default {
-        <div class="aurora-list">
+        <div cmStack gap="md" role="list">
           @for (row of item.items; track row.id) {
-            <div class="aurora-list-item">
-              @if (row.avatar) { <span class="aurora-avatar">{{ row.avatar }}</span> }
-              <div>
-                @if (row.href) { <a cmLink tone="primary" [routerLink]="router.parseUrl(row.href)"><strong>{{ row.title }}</strong></a> } @else { <strong>{{ row.title }}</strong> }
-                <p class="cm-text cm-text--sm cm-text--muted">{{ row.description }}</p>
+            <div cmRow align="center" gap="sm" [justify]="row.value ? 'between' : undefined" [wrap]="!!row.value" role="listitem">
+              @if (row.avatar) { <cm-avatar size="sm" [fallback]="row.avatar" aria-hidden="true" /> }
+              <div cmStack [minWidth]="0" grow gap="xs">
+                @if (row.href) {
+                  <a cmLink tone="primary" [routerLink]="router.parseUrl(row.href)"><strong cmText weight="semibold" wrap="anywhere">{{ row.title }}</strong></a>
+                } @else { <p cmText [weight]="row.value ? 'bold' : 'semibold'" wrap="anywhere">{{ row.title }}</p> }
+                @if (row.value) {
+                  <div cmRow align="center" gap="xs" wrap>
+                    <p cmText tone="muted" wrap="anywhere">{{ row.description }}</p>
+                    @if (row.badge) { <span cmBadge [tone]="row.tone ?? 'default'">{{ row.badge }}</span> }
+                  </div>
+                } @else { <p cmText tone="muted" wrap="anywhere">{{ row.description }}</p> }
               </div>
-              @if (row.badge) { <span [class]="'cm-badge cm-badge--soft cm-badge--' + (row.tone ?? 'default')">{{ row.badge }}</span> }
-              @if (row.value) { <strong>{{ row.value }}</strong> }
+              @if (row.value) { <p cmText weight="semibold" whiteSpace="nowrap">{{ row.value }}</p> }
+              @else if (row.badge) { <span cmBadge [tone]="row.tone ?? 'default'">{{ row.badge }}</span> }
               @if (row.action) { <a cmLink [tone]="row.action.tone ?? 'default'" [routerLink]="router.parseUrl(row.action.href)">{{ row.action.label }}</a> }
             </div>
-          } @empty { <p class="cm-text cm-text--muted">{{ item.emptyTitle ?? 'Nenhum registro encontrado.' }}</p> }
+          } @empty { <div cmEmpty [title]="item.emptyTitle ?? 'Nenhum registro encontrado.'"></div> }
         </div>
       }
     }
@@ -184,7 +192,7 @@
       @for (metric of model.metrics; track metric.title) {
         <cm-metric-card [title]="metric.title" [value]="metric.value" [description]="metric.description"
           [tone]="metric.tone" [variant]="metric.variant ?? 'surface'" showIcon>
-          <cm-icon cmMetricIcon [name]="metric.icon" [size]="path === '/app/dashboard/erp' ? 18 : 20" />
+          <cm-icon cmMetricIcon [name]="metric.icon" [size]="path === '/app/dashboard/servicos' ? 20 : path === '/app/dashboard/financeiro' ? 19 : 18" />
         </cm-metric-card>
       }
     </div>
@@ -193,40 +201,29 @@
     </div>
     @if (model.bottom; as bottom) { <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{$implicit:bottom}" /> }
   } @else if (initialListing(); as listing) {
-    <header class="aurora-page-header">
-      <div><h1>{{ listing.title }}</h1><p>{{ listing.description }}</p></div>
+    <header cmPageHeader layout="wrap" [title]="listing.title" [description]="listing.description" [actions]="listingAction() ? listingActions : undefined"></header>
+    <ng-template #listingActions>
+      @if (financeListing) { <a cmLink variant="button" routerLink="/app/dashboard/financeiro">Visão financeira</a> }
       @if (listingAction(); as action) {
-        <button cmButton type="button" tone="primary" (click)="open(action.kind)"><cm-icon [name]="action.icon" [size]="17" />{{ action.label }}</button>
+        <button cmButton type="button" tone="primary" (click)="openListingAction(action.kind)"><cm-icon [name]="action.icon" [size]="16" />{{ action.label }}</button>
       }
-    </header>
-    <section class="aurora-card">
-      <header class="aurora-card-header">
-        <div><h2 class="aurora-section-title">{{ listing.tableTitle }}</h2><p class="cm-text cm-text--sm cm-text--muted" aria-live="polite">{{ listingSummary() }}</p></div>
-        <div class="aurora-popup-anchor">
-          <button cmButton type="button" variant="outline" size="sm" [attr.aria-expanded]="columnsMenu()" (click)="columnsMenu.set(!columnsMenu())">Colunas <cm-icon name="chevron-down" [size]="15" /></button>
-          @if (columnsMenu()) {
-            <div class="aurora-user-popup" aria-label="Colunas da tabela">
-              @for (column of listing.columns; track column.key) {
-                @if (column.hideable !== false) {
-                  <label><input type="checkbox" [checked]="visibleColumns()[column.key] ?? !column.defaultHidden" (change)="setColumn(column,$event)" />{{ column.header }}</label>
-                }
-              }
-            </div>
-          }
-        </div>
-      </header>
-      <div class="aurora-filter-row" [attr.aria-label]="listing.filterLabel">
-        <cm-native-input class="aurora-grow" type="search" [label]="listing.queryLabel" [placeholder]="listing.queryPlaceholder" [value]="query()" (valueChange)="query.set($event)" />
+    </ng-template>
+    <cm-list-panel [title]="listing.tableTitle" [description]="listingSummary()" descriptionLive="polite" [filterLabel]="listing.filterLabel" [showFilters]="true">
+      <div cmListFilters style="display:contents">
+        <cm-native-input inputId="aurora-listing-search" type="search" [label]="listing.queryLabel" [placeholder]="listing.queryPlaceholder" [value]="query()" (valueChange)="changeListingQuery($event)" />
         @if (financeListing) {
-          <cm-native-select class="aurora-grow" label="Tipo" placeholder="Todos os tipos" [options]="entryKinds" [value]="entryKind()" (valueChange)="entryKind.set($event)" />
+          <cm-native-select label="Tipo" placeholder="Todos os tipos" [options]="entryKinds" [value]="entryKind()" (valueChange)="changeEntryKind($event)" />
         }
         @if (listing.statusOptions; as options) {
-          <cm-native-select class="aurora-grow" label="Situação" placeholder="Todas as situações" [options]="options" [value]="listingStatus()" (valueChange)="changeListingStatus($event)" />
+          <cm-native-select label="Situação" placeholder="Todas as situações" [options]="options" [value]="listingStatus()" (valueChange)="changeListingStatus($event)" />
         }
       </div>
-      <cm-data-table [rows]="tableRows()" [columns]="tableColumns()" [label]="listing.tableTitle" [minimumWidth]="listing.minimumTableWidth" [pageSize]="listingPageSize"
-        [emptyMessage]="listing.emptyTitle + '. ' + listing.emptyDescription" (rowAction)="tableAction($event)" />
-    </section>
+      <ng-template #emptyListingIcon><cm-icon [name]="financeListing ? 'file-text' : 'clipboard-list'" [size]="24" /></ng-template>
+      <cm-data-table [rows]="tableRows()" [columns]="tableColumns()" [label]="listing.tableTitle" [minimumWidth]="listing.minimumTableWidth"
+        [tableKey]="listingTable.key" [pageSize]="listingTable.pageSize ?? 0" [(page)]="listingPage" [defaultSortKey]="listingTable.sort ?? ''" defaultSortDirection="desc"
+        [emptyTitle]="listing.emptyTitle" [emptyDescription]="listing.emptyDescription" [emptyIcon]="emptyListingIcon"
+        emptyActionLabel="Limpar filtros" (emptyAction)="clearListingFilters()" (rowAction)="tableAction($event)" />
+    </cm-list-panel>
     @if (selectedOrder(); as order) {
       <section class="aurora-card">
         <header class="aurora-card-header">
@@ -238,56 +235,68 @@
       </section>
     }
   } @else if (path === '/app/crm/oportunidades') {
-    <header class="aurora-page-header">
-      <div><h1>Oportunidades</h1><p>Acompanhe as negociações e avance as oportunidades pelo funil comercial.</p></div>
-      <button cmButton type="button" tone="primary" (click)="open('new-opportunity')"><cm-icon name="plus" [size]="17" />Nova oportunidade</button>
-    </header>
-    <section class="aurora-card">
-      <header class="aurora-card-header"><div><h2 class="aurora-section-title">Funil de oportunidades</h2><p class="cm-text cm-text--sm cm-text--muted">{{ visibleDeals().length }} oportunidades</p></div></header>
-      <div class="aurora-filter-row">
-        <label class="aurora-native-field aurora-grow">Buscar oportunidades<input #queryField type="search" placeholder="Título, empresa ou responsável" [value]="query()" (input)="query.set(queryField.value)" /></label>
-        <label class="aurora-native-field">Responsável<select #owner [value]="status()" (change)="status.set(owner.value)">
-          <option value="">Todos</option>
-          @for (person of owners(); track person) { <option [value]="person">{{ person }}</option> }
-        </select></label>
+    <header cmPageHeader layout="wrap" title="Oportunidades" description="Organize seu funil e avance as negociações conforme evoluem." [actions]="opportunityActions"></header>
+    <ng-template #opportunityActions>
+      <button cmButton type="button" tone="primary" [disabled]="!data.clients.value().length" (click)="open('new-opportunity')"><cm-icon name="plus" [size]="17" />Nova oportunidade</button>
+    </ng-template>
+    @if (!data.clients.value().length) {
+      <p cmText>Para criar uma oportunidade, <a cmLink routerLink="/app/crm/clientes">cadastre um cliente</a>.</p>
+    }
+    <cm-list-panel title="Funil de oportunidades" [description]="visibleDeals().length + ' de ' + data.opportunities.value().length + ' oportunidades'"
+      descriptionLive="polite" filterLabel="Filtros de oportunidades" [showFilters]="true">
+      <div cmListFilters style="display:contents">
+        <cm-native-input type="search" label="Buscar oportunidades" placeholder="Título, empresa ou responsável" [value]="query()" (valueChange)="query.set($event)" />
+        <cm-native-select label="Etapa do funil" [options]="stageOptions" [value]="opportunityStage()" (valueChange)="setOpportunityStage($event)" />
       </div>
-      <div class="aurora-kanban">
-        @for (stage of stageOptions; track stage.id) {
-          <section class="aurora-kanban-column">
-            <h3>{{ stage.label }} <span [class]="'cm-badge cm-badge--soft cm-badge--' + stage.tone">{{ deals(stage.id).length }}</span></h3>
-            @for (deal of deals(stage.id); track deal.id) {
-              <article class="aurora-card aurora-kanban-card">
-                <strong>{{ deal.title }}</strong>
-                <span class="cm-text cm-text--sm cm-text--muted">{{ company(deal) }}</span>
-                <strong>{{ crmCurrency(deal.value) }}</strong>
-                <small class="cm-text cm-text--muted">{{ deal.owner }} · {{ crmDate(deal.expectedAt) }}</small>
-                @if (stage.id !== 'won') {
-                  <button cmButton variant="outline" size="sm" type="button" [attr.aria-label]="(stage.id === 'negotiation' ? 'Fechar venda: ' : 'Avançar: ') + deal.title" (click)="advance(deal)">
-                    {{ stage.id === 'negotiation' ? 'Fechar venda' : 'Avançar' }}<cm-icon name="arrow-right" [size]="15" />
-                  </button>
-                }
+      <div cmGridContainer [columns]="opportunityStage() ? 1 : {base:1,sm:2,xl:4}" spacing="md">
+        @for (stage of dealStages(); track stage.id) {
+          <section cmStack gap="sm" padding="sm" radius="lg" border="sm" surface="muted" [minWidth]="0"
+            [maxWidth]="opportunityStage() ? '28rem' : undefined" [attr.aria-labelledby]="'crm-stage-' + stage.id">
+            <div cmRow justify="between" align="center" gap="sm" wrap>
+              <h3 cmText [id]="'crm-stage-' + stage.id" tabindex="-1" weight="bold" wrap="anywhere">{{ stage.label }}</h3>
+              <span cmBadge [tone]="stage.tone" [attr.aria-label]="stage.deals.length + ' oportunidades'">{{ stage.deals.length }}</span>
+            </div>
+            <p cmText tone="muted">{{ crmCurrency(stage.total) }}</p>
+            @for (deal of stage.deals; track deal.id) {
+              <article cmCard padding="sm">
+                <div cmStack gap="xs" align="start">
+                  <h4 cmText [id]="'crm-deal-' + deal.id" tabindex="-1" weight="bold" wrap="anywhere">{{ deal.title }}</h4>
+                  <p cmText tone="muted" wrap="anywhere">{{ company(deal) }}</p>
+                  <p cmText weight="bold">{{ crmCurrency(deal.value) }}</p>
+                  <div cmRow gap="sm" wrap>
+                    <span cmRow align="center" gap="xs"><cm-icon name="user-round" [size]="14" /><span cmText tone="muted" wrap="anywhere">{{ deal.owner }}</span></span>
+                    <span cmRow align="center" gap="xs"><cm-icon name="calendar-days" [size]="14" /><time cmText tone="muted" [attr.datetime]="deal.expectedAt">{{ crmDate(deal.expectedAt) }}</time></span>
+                  </div>
+                  @if (stage.id === 'won') {
+                    <span cmBadge tone="success"><cm-icon name="check" [size]="13" />Ganha</span>
+                  } @else {
+                    <button cmButton variant="outline" tone="primary" size="sm" type="button" [attr.aria-label]="(stage.id === 'negotiation' ? 'Fechar venda: ' : 'Avançar: ') + deal.title" (click)="advance(deal)">
+                      {{ stage.id === 'negotiation' ? 'Fechar venda' : 'Avançar' }}<cm-icon name="arrow-right" [size]="14" />
+                    </button>
+                  }
+                </div>
               </article>
-            } @empty { <p class="cm-text cm-text--sm cm-text--muted">Nenhuma oportunidade nesta etapa.</p> }
+            } @empty { <p cmText tone="muted">Sem oportunidades nesta etapa.</p> }
           </section>
         }
       </div>
-    </section>
+    </cm-list-panel>
   } @else if (path === '/app/servicos/agenda') {
-    <header class="aurora-page-header">
-      <div><h1>{{ schedule().title }}</h1><p>{{ schedule().description }}</p></div>
-      @if (nextService(); as service) { <button cmButton tone="primary" type="button" (click)="open('schedule',service.id)"><cm-icon name="calendar-plus" [size]="16" />Agendar visita</button> }
-    </header>
-    <section class="aurora-card">
-      <header class="aurora-card-header"><div><h2 class="aurora-section-title">{{ schedule().listTitle }}</h2><p class="cm-text cm-text--sm cm-text--muted">{{ schedule().listDescription }}</p></div>
-        <button cmButton variant="outline" type="button" size="sm" (click)="today()">Hoje</button></header>
-      <div class="aurora-filter-row">
-        <label class="aurora-native-field">Data da agenda<input #date type="date" [value]="day()" (change)="updateDay(date.value)" /></label>
-        <label class="aurora-native-field">Técnico<select #tech [value]="technician()" (change)="technician.set(tech.value)">
-          @for (item of schedule().technicianOptions; track item.value) { <option [value]="item.value">{{ item.label }}</option> }
-        </select></label>
+    <header cmPageHeader layout="wrap" [title]="schedule().title" [description]="schedule().description" [actions]="scheduleActions"></header>
+    <ng-template #scheduleActions>
+      <button cmButton tone="primary" type="button" [disabled]="!nextService()" (click)="scheduleNext()"><cm-icon name="calendar-plus" [size]="16" />Agendar atendimento</button>
+    </ng-template>
+    <cm-list-panel [title]="schedule().listTitle" [description]="schedule().listDescription" descriptionLive="polite" [showActions]="true" [showFilters]="true" filterLabel="Filtros da agenda técnica">
+      <button cmListActions cmButton variant="outline" type="button" size="sm" (click)="today()">Hoje</button>
+      <div cmListFilters style="display:contents">
+        <cm-native-input label="Data da agenda" type="date" [value]="day()" (valueChange)="updateDay($event)" />
+        <cm-native-select label="Técnico" [options]="schedule().technicianOptions" [value]="technician()" (valueChange)="technician.set($event)" />
       </div>
-      <cm-data-table [rows]="scheduleRows()" [columns]="scheduleColumns()" label="Agenda técnica" [minimumWidth]="670" [pageSize]="0" emptyMessage="Nenhuma visita para esta data." (rowAction)="tableAction($event)" />
-    </section>
+      <ng-template #emptyScheduleIcon><cm-icon name="calendar-clock" [size]="24" /></ng-template>
+      <cm-data-table [rows]="scheduleRows()" [columns]="scheduleColumns()" label="Agenda de atendimentos" tableKey="aurora.servicos.agenda"
+        [minimumWidth]="670" [pageSize]="0" [emptyTitle]="schedule().emptyTitle" [emptyDescription]="schedule().emptyDescription"
+        [emptyIcon]="emptyScheduleIcon" (rowAction)="tableAction($event)" />
+    </cm-list-panel>
   } @else if (path === '/app/financeiro/fluxo-de-caixa') {
     <ng-template #cashActions><a cmLink variant="button" [routerLink]="cashFlow().action.href">{{ cashFlow().action.label }}</a></ng-template>
     <header cmPageHeader layout="wrap" [title]="cashFlow().title" [description]="cashFlow().description" [actions]="cashActions"></header>
@@ -343,7 +352,7 @@
         }
         <div class="aurora-page-actions" style="justify-content:end">
           <button cmButton variant="outline" type="button" (click)="closeEditor()">Cancelar</button>
-          <button cmButton tone="primary" type="submit">{{ modal.kind === 'edit-client' ? 'Salvar cliente' : modal.kind === 'adjust-stock' ? 'Registrar ajuste' : modal.kind === 'settle-entry' ? 'Confirmar' : modal.kind === 'schedule' ? 'Salvar agendamento' : 'Salvar' }}</button>
+          <button cmButton tone="primary" type="submit">{{ modal.kind === 'edit-client' ? 'Salvar cliente' : modal.kind === 'adjust-stock' ? 'Registrar ajuste' : modal.kind === 'settle-entry' ? 'Confirmar' : modal.kind === 'schedule' ? 'Salvar agendamento' : modal.kind === 'edit-service-order' ? 'Salvar ordem' : 'Salvar' }}</button>
         </div>
       </div>
     </form>

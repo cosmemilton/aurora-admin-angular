@@ -39,6 +39,15 @@
                 @case ('CmMap') {
                   <aurora-catalog-map [interactive]="index > 0" />
                 }
+                @case ('CmGallery') {
+                  <aurora-catalog-gallery [advanced]="index > 0" />
+                }
+                @case ('CmLightbox') {
+                  <aurora-catalog-gallery [advanced]="index > 0" [lightbox]="true" />
+                }
+                @case ('CmScheduler') {
+                  <aurora-catalog-scheduler [advanced]="index > 0" />
+                }
                 @case ('CmRatioBar') {
                   @if (index === 0) {
                     <cm-ratio-bar [segments]="shifts" aria-label="Capacidade da equipe: 24 h em atendimento e 16 h em plantão" />
@@ -51,12 +60,63 @@
                   }
                 }
                 @case ('CmButton') {
-                  <div class="cm-row cm-layout-wrap">
-                    <button cmButton tone="primary" type="button" (click)="announce('Ação principal selecionada.')">Ação principal</button>
-                    <button cmButton variant="outline" type="button" (click)="announce('Alterações salvas.')">Salvar alterações</button>
-                    <button cmButton variant="ghost" type="button" (click)="selected.set('Ação cancelada')">Cancelar</button>
-                  </div>
-                  @if (selected()) { <p class="cm-text cm-text--sm cm-text--muted" role="status">{{ selected() }}</p> }
+                  @if (buttonSampleGroups[index]; as group) {
+                    @let selected = buttonSampleSelection()[index] ?? 0;
+                    <div cmStack gap="md">
+                      <div cmRow role="group" [attr.aria-label]="group.label" gap="sm" align="center" wrap>
+                        @for (option of group.options; track option.label; let position = $index) {
+                          <button cmButton type="button" [variant]="option.props.variant ?? 'solid'"
+                            [tone]="option.props.tone ?? 'primary'" [size]="option.props.size ?? 'md'"
+                            [attr.aria-pressed]="selected === position" (click)="selectButtonSample(index, position)">{{ option.label }}</button>
+                        }
+                      </div>
+                      <code cmText family="mono" size="sm" tone="muted" role="status" wrap="anywhere">{{ group.attribute }}="{{ group.options[selected]?.props?.[group.attribute] }}"</code>
+                    </div>
+                  } @else if (index === 3) {
+                    <div cmStack gap="md">
+                      <div cmRow align="center" gap="md" wrap>
+                        <cm-native-select label="Formato" [options]="buttonShapes" [value]="buttonShape()" (valueChange)="setButtonShape($event)" />
+                        <cm-checkbox label="Ocupar toda a largura" [(checked)]="buttonWide" />
+                      </div>
+                      <div cmRow>
+                        <button cmButton type="button" [shape]="buttonShape()" [fullWidth]="buttonWide()" tone="primary" variant="outline"
+                          [attr.aria-pressed]="followingOrder()" (click)="followingOrder.set(!followingOrder())">
+                          {{ followingOrder() ? 'Acompanhando pedido' : 'Acompanhar pedido' }}
+                        </button>
+                      </div>
+                    </div>
+                  } @else if (index === 4) {
+                    <div cmStack gap="md">
+                      <div cmRow gap="sm" align="center" wrap>
+                        <button cmButton type="button" tone="primary" (click)="orderUnits.set(orderUnits() + 1)">
+                          <cm-icon class="cm-button__icon" name="plus" [size]="16" /> Adicionar unidade
+                        </button>
+                        <button cmButton type="button" iconOnly variant="outline" aria-label="Retirar uma unidade" title="Retirar uma unidade"
+                          [disabled]="orderUnits() === 0" (click)="orderUnits.set(orderUnits() - 1)">
+                          <cm-icon class="cm-button__icon" name="package-minus" [size]="16" />
+                        </button>
+                        <button cmButton type="button" variant="ghost" [attr.aria-expanded]="showOrderSummary()"
+                          (click)="showOrderSummary.set(!showOrderSummary())">
+                          {{ showOrderSummary() ? 'Ocultar resumo' : 'Ver resumo' }}
+                          <cm-icon class="cm-button__icon cm-button__icon--trailing" name="arrow-right" [size]="16" />
+                        </button>
+                      </div>
+                      <p cmText size="md" role="status">{{ orderUnits() }} {{ orderUnits() === 1 ? 'unidade' : 'unidades' }} no pedido</p>
+                      @if (showOrderSummary()) { <p cmText size="sm" tone="muted">Pedido 1048 · Retirada no balcão · R$ {{ orderAmount() }}</p> }
+                    </div>
+                  } @else {
+                    <div cmRow gap="sm" align="center" wrap>
+                      <button cmButton type="button" tone="primary" [disabled]="approval() !== 'ready'"
+                        [attr.aria-busy]="approval() === 'saving' ? true : null" (click)="approveOrder()">
+                        @if (approval() === 'saving') {
+                          <span class="cm-button__icon cm-button__spinner" aria-hidden="true">◌</span> Aprovando pedido…
+                        } @else {
+                          <cm-icon class="cm-button__icon" name="check" [size]="16" /> {{ approval() === 'done' ? 'Pedido aprovado' : 'Aprovar pedido' }}
+                        }
+                      </button>
+                      <button cmButton type="button" variant="outline" [disabled]="approval() !== 'done'" (click)="approval.set('ready')">Reiniciar exemplo</button>
+                    </div>
+                  }
                 }
                 @case ('CmDataTable') {
                   <cm-data-table [columns]="columns" [rows]="dataRows" [pageSize]="5" [minimumWidth]="550" label="Clientes do exemplo" />
@@ -98,7 +158,7 @@
     <cm-disclosure title="Ver código do exemplo" [(open)]="sourceOpen">
       @if (sourceOpen()) {
         <div class="aurora-demo-source">
-          @if (chartMarkup; as snippet) {
+          @if (exampleMarkup; as snippet) {
             <div class="aurora-filter-row"><strong>{{ example.name }}</strong><button cmButton variant="outline" size="sm" type="button" (click)="copy(snippet)">Copiar</button></div>
             <pre><code>{{ snippet }}</code></pre>
           }

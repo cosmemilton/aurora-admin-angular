@@ -1,3 +1,4 @@
+import type { CmCellDetail } from '@cosmemilton/ui-angular'
 import { clientStatus, getInitials, initialClients, type CrmClient } from './crm'
 import { demoInventory, demoOrders, formatMoney, formatOrderDate, orderStatuses, orderTotal, stockStatus, type Order, type Product } from './erp'
 import { entryKindLabels, financeDateLabel, financeMoney, financeStatus, seedEntries, type FinanceEntry } from './financeiro'
@@ -9,9 +10,13 @@ export type ListingCell = {
   detail?: string
   avatar?: string
   dateTime?: string
+  weight?: CmCellDetail['weight']
   tone?: string
   action?: ListingAction
   actionLabel?: string
+  actionVariant?: CmCellDetail['actionVariant']
+  actionTone?: CmCellDetail['actionTone']
+  actionPresentation?: CmCellDetail['actionPresentation']
   href?: string
   sortValue?: string | number
 }
@@ -76,7 +81,7 @@ function crmClients(clients: CrmClient[]): Listing {
         name: { text: client.name, detail: client.company, avatar: getInitials(client.name) },
         email: { text: client.email }, city: { text: client.city },
         status: { text: clientStatus[client.status].label, tone: clientStatus[client.status].tone },
-        actions: { text: 'Editar', action: 'edit-client', actionLabel: `Editar ${client.name}` },
+        actions: { text: 'Editar', action: 'edit-client', actionPresentation: 'tableAction', actionLabel: `Editar ${client.name}` },
       },
     })),
   }
@@ -100,7 +105,7 @@ function erpOrders(orders: Order[]): Listing {
     rows: orders.map(order => ({
       id: order.id, status: order.status, search: `${order.id} ${order.customer}`,
       cells: {
-        id: { text: `#${order.id}`, action: 'select-order', actionLabel: `Ver detalhes do pedido #${order.id}`, sortValue: Number(order.id) },
+        id: { text: `#${order.id}`, action: 'select-order', actionVariant: 'link', actionTone: 'primary', actionLabel: `Ver detalhes do pedido #${order.id}`, sortValue: Number(order.id) },
         customer: { text: order.customer }, date: { text: formatOrderDate(order.date), dateTime: order.date, sortValue: order.date },
         total: { text: formatMoney(orderTotal(order)), sortValue: orderTotal(order) },
         status: { text: orderStatuses[order.status].label, tone: orderStatuses[order.status].tone },
@@ -130,10 +135,10 @@ function erpInventory(inventory: Product[]): Listing {
       return {
         id: product.sku, status: status.label, search: `${product.name} ${product.sku} ${product.category}`,
         cells: {
-          sku: { text: product.sku }, name: { text: product.name }, category: { text: product.category },
+          sku: { text: product.sku, weight: 'bold' }, name: { text: product.name }, category: { text: product.category },
           quantity: { text: product.quantity }, minimum: { text: product.minimum },
           status: { text: status.label, tone: status.tone },
-          actions: { text: 'Ajustar', action: 'adjust-stock', actionLabel: `Ajustar estoque de ${product.name}` },
+          actions: { text: 'Ajustar', action: 'adjust-stock', actionPresentation: 'tableAction', actionLabel: `Ajustar estoque de ${product.name}` },
         },
       }
     }),
@@ -142,18 +147,18 @@ function erpInventory(inventory: Product[]): Listing {
 
 function financeEntries(entries: FinanceEntry[]): Listing {
   return {
-    title: 'Lançamentos', description: 'Acompanhe as contas a receber e a pagar e registre as liquidações.', tableTitle: 'Contas a receber e a pagar',
-    filterLabel: 'Filtros de lançamentos', queryLabel: 'Buscar lançamento', queryPlaceholder: 'Descrição, contato ou categoria',
-    emptyTitle: 'Nenhum lançamento encontrado', emptyDescription: 'Experimente outro termo ou situação.',
-    recordName: 'lançamentos', minimumTableWidth: 720,
+    title: 'Lançamentos', description: 'Cadastre contas a receber ou a pagar e registre a liquidação quando o dinheiro entrar ou sair.', tableTitle: 'Contas a receber e a pagar',
+    filterLabel: 'Filtros de lançamentos', queryLabel: 'Buscar lançamento', queryPlaceholder: 'Descrição, contato, categoria',
+    emptyTitle: 'Nenhum lançamento encontrado', emptyDescription: 'Ajuste a busca ou os filtros para ver outros lançamentos.',
+    recordName: 'lançamentos', minimumTableWidth: 880,
     statusOptions: [{ value: 'pendente', label: 'Em aberto' }, { value: 'vencido', label: 'Vencido' }, { value: 'liquidado', label: 'Liquidado' }],
     columns: [
       { key: 'description', header: 'Lançamento', sortable: true, hideable: false },
       { key: 'kind', header: 'Tipo', sortable: true },
       { key: 'dueDate', header: 'Vencimento', sortable: true },
       { key: 'cents', header: 'Valor', sortable: true, align: 'right' },
-      { key: 'status', header: 'Situação' },
-      { key: 'settledDate', header: 'Liquidação', align: 'right', hideable: false },
+      { key: 'status', header: 'Situação', sortable: false },
+      { key: 'settledDate', header: 'Liquidação', align: 'right', hideable: false, sortable: false },
     ],
     rows: entries.map(entry => {
       const status = financeStatus(entry)
@@ -162,15 +167,15 @@ function financeEntries(entries: FinanceEntry[]): Listing {
       return {
         id: entry.id, status, search: `${entry.description} ${entry.contact} ${entry.category}`,
         cells: {
-          description: { text: entry.description, detail: `${entry.contact} · ${entry.category}` },
+          description: { text: entry.description, detail: `${entry.contact} · ${entry.category}`, weight: 'bold' },
           kind: { text: entryKindLabels[entry.kind], tone: income ? 'success' : 'info' },
           dueDate: { text: financeDateLabel(entry.dueDate), dateTime: entry.dueDate, sortValue: entry.dueDate },
-          cents: { text: financeMoney(entry.cents), sortValue: entry.cents },
+          cents: { text: financeMoney(entry.cents), weight: 'bold', sortValue: entry.cents },
           status: { text: status === 'vencido' ? 'Vencido' : status === 'pendente' ? 'Em aberto' : income ? 'Recebido' : 'Pago',
             tone: status === 'vencido' ? 'danger' : status === 'pendente' ? 'warning' : 'success' },
           settledDate: entry.settledDate
             ? { text: financeDateLabel(entry.settledDate), dateTime: entry.settledDate }
-            : { text: settleLabel, action: 'settle-entry', actionLabel: `${settleLabel} de ${entry.contact}` },
+            : { text: settleLabel, action: 'settle-entry', actionPresentation: 'tableAction', actionLabel: `${settleLabel} de ${entry.contact}` },
         },
       }
     }),
@@ -195,11 +200,11 @@ function services(orders: ServiceOrder[]): Listing {
     rows: orders.map(order => ({
       id: order.id, status: order.status, search: `${orderCode(order.id)} ${order.client} ${order.service} ${order.technician}`,
       cells: {
-        id: { text: orderCode(order.id), action: 'edit-service-order', actionLabel: `Editar ${orderCode(order.id)}`, sortValue: order.id },
+        id: { text: orderCode(order.id), action: 'edit-service-order', actionVariant: 'link', actionTone: 'primary', actionLabel: `Editar ${orderCode(order.id)}`, sortValue: order.id },
         service: { text: order.service }, client: { text: order.client }, technician: { text: order.technician || 'A definir' },
         date: order.date
           ? { text: `${displayDate(order.date)} · ${order.time}`, dateTime: `${order.date}T${order.time}`, sortValue: `${order.date} ${order.time}` }
-          : { text: 'Agendar', href: `/app/servicos/agenda?ordem=${order.id}`, actionLabel: `Agendar ${orderCode(order.id)}` },
+          : { text: 'Agendar', href: `/app/servicos/agenda?ordem=${order.id}`, actionLabel: `Agendar ${orderCode(order.id)}`, sortValue: '' },
         status: { text: order.status, tone: statusTones[order.status] },
       },
     })),

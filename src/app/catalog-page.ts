@@ -1,14 +1,17 @@
 import { Location } from '@angular/common'
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { DomSanitizer } from '@angular/platform-browser'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import {
-  CmBadge, CmBarChart, CmButton, CmCard, CmColumn, CmComparisonLineChart, CmDataTable, CmDisclosure, CmDonutChart, CmEmpty, CmField, CmGrid, CmGridContainer,
-  CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
+  CmBadge, CmBarChart, CmButton, CmCard, CmCheckbox, CmColumn, CmComparisonLineChart, CmDataTable, CmDisclosure, CmDonutChart, CmEmpty, CmField, CmGrid, CmGridContainer,
+  CmIcon, CmIconBadge, CmLink, CmNativeSelect, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmTableRow, CmText,
   CmRatioBar, CmSummaryList, CmThemeMenu, CmThemeService, CmToastService,
+  type CmButtonVariant, type CmTone,
 } from '@cosmemilton/ui-angular'
 import { CatalogFrame, previewTheme } from './catalog-frame'
+import { CatalogGallery } from './catalog-gallery'
+import { CatalogScheduler } from './catalog-scheduler'
 import { CatalogMapDemo } from './catalog-map-demo'
 import { catalog, categories, categoryRoot, normalizeSearch } from './navigation'
 import rawExamples from './reference/catalogExamples.json'
@@ -21,12 +24,37 @@ type FrameMode = 'basic' | 'advanced'
 type Section = {title:string;description?:string;frame?:FrameMode;wide?:boolean}
 const examples = rawExamples as Record<string,{ source:string; sections:Section[] }>
 const trees = rawTrees as unknown as Record<string,(FixtureChild[] | null)[]>
+type ButtonSample = {
+  label: string
+  props: { variant?: CmButtonVariant; tone?: CmTone; size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' }
+}
+type ButtonSampleGroup = { attribute: keyof ButtonSample['props']; label: string; options: readonly ButtonSample[] }
+
+const buttonSampleGroups: readonly ButtonSampleGroup[] = [
+  { attribute: 'variant', label: 'Estilos de botão', options: [
+    { label: 'Sólido', props: { variant: 'solid' } }, { label: 'Contorno', props: { variant: 'outline' } },
+    { label: 'Suave', props: { variant: 'soft' } }, { label: 'Superfície', props: { variant: 'surface' } },
+    { label: 'Fantasma', props: { variant: 'ghost' } }, { label: 'Link', props: { variant: 'link' } },
+    { label: 'Simples', props: { variant: 'plain' } },
+  ] },
+  { attribute: 'tone', label: 'Tons do botão', options: [
+    { label: 'Neutro', props: { tone: 'default' } }, { label: 'Primário', props: { tone: 'primary' } },
+    { label: 'Secundário', props: { tone: 'secondary' } }, { label: 'Destaque', props: { tone: 'accent' } },
+    { label: 'Sucesso', props: { tone: 'success' } }, { label: 'Informação', props: { tone: 'info' } },
+    { label: 'Atenção', props: { tone: 'warning' } }, { label: 'Perigo', props: { tone: 'danger' } },
+  ] },
+  { attribute: 'size', label: 'Tamanhos do botão', options: [
+    { label: 'Extra pequeno', props: { size: 'xs' } }, { label: 'Pequeno', props: { size: 'sm' } },
+    { label: 'Médio', props: { size: 'md' } }, { label: 'Grande', props: { size: 'lg' } },
+    { label: 'Extra grande', props: { size: 'xl' } },
+  ] },
+]
 
 @Component({
   selector:'aurora-catalog',
-  imports: [RouterLink, CmBadge, CmButton, CmCard, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
-    CmIcon, CmIconBadge, CmLink, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
-    FixtureTree, CatalogFrame, CatalogMapDemo, CmBarChart, CmComparisonLineChart, CmDonutChart, CmRatioBar, CmSummaryList],
+  imports: [RouterLink, CmBadge, CmButton, CmCard, CmCheckbox, CmDataTable, CmDisclosure, CmEmpty, CmField, CmGrid, CmGridContainer,
+    CmIcon, CmIconBadge, CmLink, CmNativeSelect, CmPage, CmPageHeader, CmRow, CmSectionHeader, CmStack, CmText, CmThemeMenu,
+    FixtureTree, CatalogFrame, CatalogGallery, CatalogMapDemo, CatalogScheduler, CmBarChart, CmComparisonLineChart, CmDonutChart, CmRatioBar, CmSummaryList],
   changeDetection:ChangeDetectionStrategy.OnPush,
   templateUrl:'./catalog-page.html',
   host:{style:'display:block;min-width:0'},
@@ -73,12 +101,24 @@ export class CatalogPage {
     return catalog.filter(item => (!this.match || item.category.id === this.match.id)
       && normalizeSearch([item.label, item.name, item.slug.replaceAll('-', ' '), item.description, item.category.label].join(' ')).includes(target))
   })
-  readonly selected = signal('')
+  readonly buttonSampleGroups = buttonSampleGroups
+  readonly buttonSampleSelection = signal<Record<number, number>>({})
+  readonly buttonShapes = [{ value: 'default', label: 'Padrão' }, { value: 'pill', label: 'Pílula' }, { value: 'square', label: 'Quadrado' }]
+  readonly buttonShape = signal<'default' | 'pill' | 'square'>('pill')
+  readonly buttonWide = signal(false)
+  readonly followingOrder = signal(false)
+  readonly orderUnits = signal(1)
+  readonly showOrderSummary = signal(false)
+  readonly orderAmount = computed(() => (this.orderUnits() * 25).toLocaleString('pt-BR', { minimumFractionDigits: 2 }))
+  readonly approval = signal<'ready' | 'saving' | 'done'>('ready')
+  private approvalTimer?: ReturnType<typeof setTimeout>
   readonly pipelineStages = pipelineStages
   readonly weeklyPoints = weeklyPoints
   readonly revenueAxis = revenueAxis
   readonly orderAxis = orderAxis
-  readonly chartMarkup = this.item && chartMarkup[this.item.name]
+  readonly exampleMarkup = this.item?.name === 'CmButton'
+    ? '<button cmButton tone="primary" type="button">Salvar</button>'
+    : this.item && chartMarkup[this.item.name]
   readonly shifts = [{ label: 'Atendimento', value: 24, tone: 'primary' }, { label: 'Plantão', value: 16, tone: 'success' }]
   readonly hours = signal(this.shifts.map(shift => shift.value))
   readonly shiftSegments = computed(() => this.shifts.map((shift, i) => ({ ...shift, value: this.hours()[i]!, min: 4 })))
@@ -94,6 +134,27 @@ export class CatalogPage {
     {id:'4',cells:{contact:{label:'Carla Rocha',avatar:'CR',detail:'Aquarela Studio'},city:'Fortaleza, CE',value:510,status:{label:'Inativo',tone:'default'}}},
     {id:'5',cells:{contact:{label:'Raul Barreto',avatar:'RB',detail:'Ponte Sistemas'},city:'Recife, PE',value:121, status:{label:'Ativo',tone:'success'}}},
   ]
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearTimeout(this.approvalTimer))
+  }
+
+  selectButtonSample(group: number, option: number) {
+    this.buttonSampleSelection.update(selected => ({ ...selected, [group]: option }))
+  }
+
+  setButtonShape(shape: string) {
+    if (shape === 'default' || shape === 'pill' || shape === 'square') this.buttonShape.set(shape)
+  }
+
+  approveOrder() {
+    if (this.approval() !== 'ready') return
+    this.approval.set('saving')
+    this.approvalTimer = setTimeout(() => {
+      this.approval.set('done')
+      this.announce('Pedido de exemplo aprovado.')
+    }, 900)
+  }
 
   setQuery(value: string) {
     void this.router.navigate([], {
