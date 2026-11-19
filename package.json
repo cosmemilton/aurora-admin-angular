@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ng serve --port 4200",
     "build": "ng build",
+    "build:deploy": "ng build --base-href /aurora-admin-angular/",
     "preview": "node scripts/preview.mjs"
   },
   "dependencies": {
